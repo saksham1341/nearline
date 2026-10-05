@@ -1,8 +1,16 @@
 export function json(data: unknown, init: ResponseInit = {}): Response {
   const headers = new Headers(init.headers);
   headers.set("content-type", "application/json; charset=utf-8");
-  headers.set("cache-control", "no-store");
+  if (!headers.has("cache-control")) headers.set("cache-control", "no-store");
   return new Response(JSON.stringify(data), { ...init, headers });
+}
+
+/** Adds Set-Cookie headers. Copies the response because cached responses have immutable headers. */
+export function appendCookies(response: Response, cookies: readonly string[]): Response {
+  if (cookies.length === 0) return response;
+  const copy = new Response(response.body, response);
+  for (const cookie of cookies) copy.headers.append("set-cookie", cookie);
+  return copy;
 }
 
 export async function readJson<T>(request: Request): Promise<T> {

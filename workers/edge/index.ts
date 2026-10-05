@@ -10,7 +10,7 @@ import { ThreadStore } from "./durable-objects/thread-store.ts";
 import { UserState } from "./durable-objects/user-state.ts";
 import type { Env } from "./env.ts";
 import type { FeedEvent } from "./events.ts";
-import { appendCookies, errorResponse, HttpError, json, readJson } from "./http.ts";
+import { errorResponse, finalizeApiResponse, HttpError, json, readJson } from "./http.ts";
 import { consumeEvents } from "./queue/consumer.ts";
 import { createServices } from "./services-env.ts";
 
@@ -58,7 +58,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   const auth = await authenticate(request, env);
   if (!auth) throw new HttpError(401, "UNAUTHORIZED");
   const ctx: ApiContext = { services: createServices(env), user: auth.user, now: Date.now() };
-  return appendCookies(await route(request, url, ctx), auth.setCookies);
+  return finalizeApiResponse(await route(request, url, ctx), auth.setCookies);
 }
 
 async function route(request: Request, url: URL, ctx: ApiContext): Promise<Response> {

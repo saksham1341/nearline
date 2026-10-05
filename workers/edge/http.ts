@@ -5,10 +5,25 @@ export function json(data: unknown, init: ResponseInit = {}): Response {
   return new Response(JSON.stringify(data), { ...init, headers });
 }
 
-/** Adds Set-Cookie headers. Copies the response because cached responses have immutable headers. */
+/** Adds Set-Cookie headers. A response carrying a cookie must never be stored by a shared cache. */
 export function appendCookies(response: Response, cookies: readonly string[]): Response {
   if (cookies.length === 0) return response;
   const copy = new Response(response.body, response);
+  copy.headers.set("cache-control", "private, no-store");
+  for (const cookie of cookies) copy.headers.append("set-cookie", cookie);
+  return copy;
+}
+
+/**
+ * Prepares an API response for the browser. Feed and thread responses are marked `public` so the
+ * Worker's own edge cache can share them; on the way out they become private, so no proxy between
+ * Cloudflare and the browser stores them. Any response carrying a session cookie is never stored.
+ */
+export function finalizeApiResponse(response: Response, cookies: readonly string[]): Response {
+  const copy = new Response(response.body, response);
+  if ((copy.headers.get("cache-control") ?? "").includes("public")) copy.headers.set("cache-control", "private, no-cache");
+  if (cookies.length === 0) return copy;
+  copy.headers.set("cache-control", "private, no-store");
   for (const cookie of cookies) copy.headers.append("set-cookie", cookie);
   return copy;
 }

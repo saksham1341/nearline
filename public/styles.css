@@ -391,7 +391,7 @@ body.doc { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
   flex: none; height: 56px; display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; padding: 0 4px;
   background: var(--bar); color: var(--bar-ink);
 }
-.thread-header .logo { grid-column: 1 / -1; grid-row: 1; justify-self: center; color: var(--bar-ink); width: 40px; height: 40px; }
+.thread-header .logo { grid-column: 1 / -1; grid-row: 1; justify-self: center; color: var(--bar-ink); }
 .thread-header-left { grid-column: 1; grid-row: 1; justify-self: start; }
 .thread-header-right { grid-column: 3; grid-row: 1; justify-self: end; }
 .thread-header .icon-button { width: 40px; height: 40px; }

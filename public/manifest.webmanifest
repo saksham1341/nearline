@@ -1,0 +1,14 @@
+{
+  "name": "Nearline",
+  "short_name": "Nearline",
+  "description": "Posts from the people around you. Each one fades fifteen minutes after it goes quiet.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0c0e",
+  "theme_color": "#171411",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/favicon.ico", "sizes": "any", "type": "image/x-icon" }
+  ]
+}

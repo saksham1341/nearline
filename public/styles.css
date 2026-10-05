@@ -359,7 +359,7 @@ body.doc { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
   color: var(--ink-2); font-size: var(--t-14); text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .reply-tree { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.reply-tree .reply-tree { margin: 8px 0 0 16px; padding-left: 12px; border-left: 2px solid var(--line); }
+.reply-tree .reply-tree { margin: 8px 0 0 16px; padding-left: 12px; border-left: 1px solid var(--line-strong); }
 .post-reply { --avatar: 32px; --avatar-box: 42px; }
 .post-reply::before { font-size: var(--t-12); }
 .continue-thread { margin-top: 8px; min-height: 36px; padding: 0 12px; border: 0; border-radius: var(--pill); background: var(--bg); color: var(--ink); font-size: var(--t-14); font-weight: 700; text-align: left; }

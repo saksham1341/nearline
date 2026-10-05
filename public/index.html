@@ -165,5 +165,32 @@
     <div class="sync-overlay" aria-live="polite" aria-atomic="true">
       <span class="sync-overlay-text" data-sync-label>Connecting…</span>
     </div>
+
+    <div class="composer-island" hidden>
+      <button class="composer-audience" data-room-button type="button" aria-haspopup="dialog" aria-controls="room-dialog">
+        <svg class="icon icon-public" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c2 2 2 10 0 12M8 2c-2 2-2 10 0 12"/></svg>
+        <svg class="icon icon-private" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>
+        <span class="sr-only">Posting to </span><span class="audience-label" data-room-button-label>Public</span>
+      </button>
+      <button class="composer-fab" type="button" aria-label="Write a post" data-compose-open>
+        <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M12 2 2 12M12 2l2 2-2 2M12 2l-2 2 2 2"/></svg>
+      </button>
+    </div>
+
+    <dialog id="post-dialog" class="sheet post-dialog" aria-labelledby="post-dialog-title">
+      <form id="post-form" method="dialog">
+        <header class="dialog-header">
+          <h2 id="post-dialog-title">New post</h2>
+          <button class="icon-button" value="cancel" aria-label="Close" type="submit" formnovalidate>
+            <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8"/></svg>
+          </button>
+          <button class="button primary" id="post-send" type="submit" disabled>Post</button>
+        </header>
+        <div class="post-dialog-body">
+          <label class="sr-only" for="post-input">Post text</label>
+          <textarea id="post-input" rows="3" maxlength="1000" placeholder="What's happening here?" enterkeyhint="send"></textarea>
+        </div>
+      </form>
+    </dialog>
   </body>
 </html>

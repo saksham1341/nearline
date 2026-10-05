@@ -54,6 +54,11 @@ const elements = {
   roomPassphrase: required<HTMLInputElement>("room-passphrase"),
   leaveRoom: required<HTMLButtonElement>("leave-room"),
   toast: required<HTMLElement>("toast"),
+  composerIsland: document.querySelector<HTMLElement>(".composer-island"),
+  composerFab: document.querySelector<HTMLButtonElement>(".composer-fab"),
+  postForm: document.querySelector<HTMLFormElement>("#post-form"),
+  postInput: document.querySelector<HTMLTextAreaElement>("#post-input"),
+  postSend: document.querySelector<HTMLButtonElement>("#post-send"),
 };
 
 const scopeButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("button[data-scope]"));
@@ -197,6 +202,36 @@ function bindEvents(): void {
     elements.feed.scrollTo({ top: 0, behavior: "smooth" });
     hideNewPosts();
   });
+
+  /* Composer island (desktop) */
+  elements.composerFab?.addEventListener("click", () => {
+    if (elements.postForm) {
+      elements.postInput!.value = "";
+      elements.postSend!.disabled = true;
+      elements.postForm.showModal();
+    }
+  });
+  if (elements.postForm) {
+    elements.postForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const body = elements.postInput!.value.trim();
+      if (!body || !currentLocation) return;
+      elements.postForm!.close();
+      void submitPostWithText(body);
+    });
+    elements.postForm.addEventListener("cancel", () => elements.postForm!.close());
+  }
+  if (elements.postInput && elements.postSend) {
+    const postInput = elements.postInput;
+    const postSend = elements.postSend;
+    postInput.addEventListener("input", () => {
+      postSend.disabled = !postInput.value.trim();
+    });
+  }
+  const islandObs = new MutationObserver(() => {
+    if (elements.composerIsland) elements.composerIsland.hidden = elements.threadView.hidden === false;
+  });
+  islandObs.observe(elements.threadView, { attributes: true, attributeFilter: ["hidden"] });
   elements.feed.addEventListener("scroll", () => {
     if (elements.feed.scrollTop < 80) hideNewPosts();
   }, { passive: true });
@@ -451,6 +486,26 @@ async function pollThread(): Promise<boolean> {
 }
 
 // ---------- Actions ----------
+
+async function submitPostWithText(body: string): Promise<void> {
+  if (!canSubmit(body) || !currentLocation) return;
+  const id = crypto.randomUUID();
+  const now = state.now();
+  const via: Anchor = { cell11: currentLocation, kind: "root", byAuthor: currentAuthor, createdAt: now };
+  if (activeTab !== "latest") selectTab("latest");
+  state.addPendingThread(pendingSummary(id, body, now), via);
+  elements.feed.scrollTo({ top: 0 });
+  scheduleRender();
+  const result = await sendAction({ id, type: "post", ...viewerFields(), location: currentLocation, body });
+  if (result.ok && result.postId) {
+    state.confirmPendingThread(id, result.postId);
+    feedPoller.poke();
+  } else {
+    state.failPendingThread(id);
+    handleActionError(result.ok ? "UNAVAILABLE" : result.code);
+  }
+  scheduleRender();
+}
 
 async function submitPost(): Promise<void> {
   const body = elements.input.value;
@@ -837,6 +892,7 @@ function showView(view: "auth" | "location" | "chat"): void {
   elements.authView.hidden = view !== "auth";
   elements.locationView.hidden = view !== "location";
   elements.chatView.hidden = view !== "chat";
+  if (elements.composerIsland) elements.composerIsland.hidden = view !== "chat" || elements.threadView.hidden === false;
   if (view === "chat" && window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
     requestAnimationFrame(() => elements.input.focus({ preventScroll: true }));
   }

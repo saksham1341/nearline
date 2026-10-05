@@ -541,25 +541,48 @@ textarea:focus, textarea:focus-visible { outline: none; box-shadow: none; }
 @media (min-width: 720px) {
   body { background: var(--canvas); }
   body:has(> .app:not([hidden]))::before, body.doc::before { content: ""; }
-  .app { z-index: 1; }
-  .app { height: calc(var(--viewport-height) - 40px); margin-top: 20px; border-radius: 12px; box-shadow: 0 0 0 1px var(--island-line), 0 18px 48px -12px rgba(0, 0, 0, 0.35); --appbar-top: 64px; }
-  .frame { padding-top: 8px; }
+  .app { z-index: 1; height: calc(var(--viewport-height) - 40px); margin-top: 20px; border-radius: 12px; box-shadow: 0 0 0 1px var(--island-line), 0 18px 48px -12px rgba(0, 0, 0, 0.35); --appbar-top: 64px; }
+  .frame { padding-top: 8px; border-radius: 12px 12px 0 0; }
   .audience-chip { max-width: 220px; }
+  .board { border-radius: 0 0 12px 12px; }
   body.doc .doc-shell { min-height: 0; margin: 20px auto; border-radius: 12px; overflow: clip; box-shadow: 0 0 0 1px var(--island-line), 0 18px 48px -12px rgba(0, 0, 0, 0.35); }
+
+  /* Board fills app height, feed scrolls inside */
+  .board { display: flex; flex-direction: column; min-height: 0; }
+  .feed { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+  .empty-state { min-height: 60vh; }
+
+  /* Hide inline composer on desktop */
+  #composer { display: none !important; }
+
+  /* Floating composer island */
+  .composer-island { position: fixed; z-index: 30; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 999px; background: var(--bar); color: var(--bar-ink); box-shadow: var(--shadow), 0 0 0 1px var(--island-line); }
+  .composer-island[hidden] { display: none !important; }
+  .composer-audience { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: var(--bar-ink); font-size: var(--t-14); font-weight: 700; cursor: pointer; }
+  .composer-audience .icon { width: 16px; height: 16px; }
+  .composer-audience .icon-private, .composer-audience.active .icon-public { display: none; }
+  .composer-audience.active .icon-private { display: block; }
+  .composer-audience.active { color: var(--private-green); }
+  .composer-fab { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: 0; border-radius: 50%; background: var(--ink); color: var(--on-ink); cursor: pointer; }
+  .composer-fab .icon { width: 16px; height: 16px; }
+
+  /* Thread island on wide screens */
+  :root.thread-open .app { overflow: visible; }
 }
 
-/* ---------- Wide screens: the thread opens as its own island beside the feed ---------- */
+/* ---------- Wide screens: the thread opens as a panel beside the feed ---------- */
 @media (min-width: 1200px) {
-  .app { --thread-w: 480px; overflow: visible; transition: translate 280ms var(--ease-out); }
-  .frame { border-radius: 12px 12px 0 0; }
-  .board { border-radius: 0 0 12px 12px; overflow: hidden; }
-  /* The pair stays centred: the feed slides left by half the thread's width. */
-  :root.thread-open .app { translate: calc(-1 * (var(--thread-w) + 16px) / 2) 0; }
+  .app { --thread-w: 480px; }
+  .board { border-radius: 0 0 12px 12px; }
+  /* Thread sits in normal flow beside the feed */
+  :root.thread-open .board { display: grid; grid-template-columns: 1fr var(--thread-w); }
+  :root.thread-open .feed { border-right: 1px solid var(--line); overflow-y: auto; }
   :root.thread-open .feed-tabs { display: grid; }
   .thread-view {
-    top: 0; bottom: 0; left: calc(100% + 16px); right: auto; width: var(--thread-w);
-    border-radius: 12px; overflow: hidden;
-    box-shadow: 0 0 0 1px var(--island-line), 0 18px 48px -12px rgba(0, 0, 0, 0.35);
+    position: relative; top: auto; bottom: auto; left: auto; right: auto;
+    width: auto; height: auto; min-height: 100%;
+    border-radius: 0; overflow-y: auto;
+    box-shadow: none; animation: none;
   }
   .thread-header { height: 64px; padding: 0 12px 0 8px; }
   .thread-title { font-size: var(--t-16); }

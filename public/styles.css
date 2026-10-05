@@ -15,8 +15,8 @@
   color-scheme: light dark;
 
   /* THEME: surfaces and ink (light) */
-  --canvas: #e9ecef;
-  --doodle: rgba(20, 25, 31, 0.09);
+  --canvas: #d5dbe1;
+  --doodle: rgba(20, 25, 31, 0.07);
   --bar: #14191f;
   --bar-ink: #ffffff;
   --bar-muted: #a7b1bb;
@@ -73,8 +73,8 @@
 /* Dark: follows the system unless the viewer picked a theme in the identity menu. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --canvas: #000000;
-    --doodle: rgba(233, 237, 239, 0.06);
+    --canvas: #0c1014;
+    --doodle: rgba(233, 237, 239, 0.045);
     --bar: #1b2128;
     --bar-ink: #e9edef;
     --bar-muted: #8696a0;
@@ -104,8 +104,8 @@
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --canvas: #000000;
-  --doodle: rgba(233, 237, 239, 0.06);
+  --canvas: #0c1014;
+  --doodle: rgba(233, 237, 239, 0.045);
   --bar: #1b2128;
   --bar-ink: #e9edef;
   --bar-muted: #8696a0;
@@ -199,6 +199,7 @@ h1, h2, p { margin: 0; }
 
 /* ---------- App shell: one column, an app bar on top (THEME) ---------- */
 .app {
+  --appbar-top: calc(max(8px, env(safe-area-inset-top, 0px)) + 56px);
   position: relative; width: min(100%, var(--column)); height: 100vh; height: var(--viewport-height); margin: 0 auto;
   display: flex; flex-direction: column; overflow: hidden; background: var(--bg);
 }
@@ -261,6 +262,8 @@ h1, h2, p { margin: 0; }
 }
 .feed-tabs button[aria-selected="true"] { color: var(--bar-ink); }
 .feed-tabs button[aria-selected="true"]::after { content: ""; position: absolute; left: 16px; right: 16px; bottom: 0; height: 3px; border-radius: 3px 3px 0 0; background: var(--bar-ink); }
+/* In a thread the back button takes the tabs' row, so the bar keeps one height. */
+:root.thread-open .feed-tabs { display: none; }
 
 /* ---------- Feed: list rows ---------- */
 .board { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; background: var(--bg); }
@@ -344,18 +347,20 @@ body.doc { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 
 /* ---------- Thread: X-style. The post in focus large on top, replies as rows joined by a line. ---------- */
 .thread-view {
-  position: fixed; inset: 0; z-index: 30; width: min(100%, var(--column)); margin: 0 auto;
+  /* Opens under the app bar's top row, so the bar keeps its place and height; the thread's own header
+     takes the tabs' row. */
+  position: absolute; z-index: 4; left: 0; right: 0; bottom: 0; top: var(--appbar-top);
   display: flex; flex-direction: column; min-height: 0;
-  background: var(--bg); animation: slide-in 240ms var(--ease-out) both;
+  background: var(--bg); animation: slide-in 200ms var(--ease-out) both;
 }
 .thread-header {
-  flex: none; min-height: 56px; display: flex; align-items: center; gap: 4px;
-  padding: max(6px, env(safe-area-inset-top, 0px)) 12px 6px 4px;
+  flex: none; height: 48px; display: flex; align-items: center; gap: 4px; padding: 0 8px 0 4px;
   background: var(--bar); color: var(--bar-ink);
 }
+.thread-header .icon-button { width: 40px; height: 40px; }
 :root.room-active .thread-header { background: var(--private-bar); }
 .thread-header .icon-button, .thread-header .text-button { color: var(--bar-ink); }
-.thread-title { flex: 1; font-size: var(--t-20); font-weight: 700; }
+.thread-title { flex: 1; font-size: var(--t-14); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
 .thread-faded, .thread-loading { margin: 12px 16px; padding: 10px 14px; border-radius: 12px; background: var(--surface); color: var(--ink-2); font-size: var(--t-14); }
 .thread-context { display: grid; padding: 4px 0; border-bottom: 1px solid var(--line); }
 .context-link {
@@ -479,7 +484,7 @@ textarea:focus, textarea:focus-visible { outline: none; box-shadow: none; }
 
 /* ---------- Wider screens: the app sits as a column on the canvas ---------- */
 @media (min-width: 720px) {
-  body { background: linear-gradient(var(--bar) 0 128px, var(--canvas) 128px); }
+  body { background: var(--canvas); }
   /* Doodles of the neighbourhood fill the canvas behind the app. */
   body:has(> .app:not([hidden]))::before {
     content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
@@ -487,8 +492,7 @@ textarea:focus, textarea:focus-visible { outline: none; box-shadow: none; }
     -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E %3Cg transform='translate(18 20) rotate(-8 14 16)'%3E%3Cpath d='M14 2a12 12 0 0 0-12 12c0 9 12 20 12 20s12-11 12-20A12 12 0 0 0 14 2z'/%3E%3Ccircle cx='14' cy='14' r='4'/%3E%3C/g%3E %3Cg transform='translate(96 14)'%3E%3Cpath d='M16 2l12 7v14l-12 7-12-7V9z'/%3E%3Cpath d='M16 10l6 3.5v7L16 24l-6-3.5v-7z'/%3E%3C/g%3E %3Cg transform='translate(176 24) rotate(6 18 14)'%3E%3Cpath d='M4 4h28a3 3 0 0 1 3 3v15a3 3 0 0 1-3 3H16l-8 7v-7H4a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3z'/%3E%3Cpath d='M9 12h18M9 18h11'/%3E%3C/g%3E %3Cg transform='translate(262 18) rotate(10 14 12)'%3E%3Cpath d='M14 24S2 16 2 9a6 6 0 0 1 12-2 6 6 0 0 1 12 2c0 7-12 15-12 15z'/%3E%3C/g%3E %3Cg transform='translate(30 92)'%3E%3Ccircle cx='16' cy='16' r='14'/%3E%3Cpath d='M16 8v8l6 4'/%3E%3C/g%3E %3Cg transform='translate(110 100) rotate(-6 18 14)'%3E%3Cpath d='M6 10h20l-4-4M26 10l-4 4'/%3E%3Cpath d='M30 22H10l4 4M10 22l4-4'/%3E%3C/g%3E %3Cg transform='translate(190 88)'%3E%3Cpath d='M6 10h20v10a8 8 0 0 1-8 8h-4a8 8 0 0 1-8-8z'/%3E%3Cpath d='M26 13h3a4 4 0 0 1 0 8h-3'/%3E%3Cpath d='M11 2c-2 2 2 4 0 6M17 2c-2 2 2 4 0 6'/%3E%3C/g%3E %3Cg transform='translate(266 96)'%3E%3Cpath d='M16 2L6 18h6l-6 10h20l-6-10h6z'/%3E%3Cpath d='M16 28v6'/%3E%3C/g%3E %3Cg transform='translate(16 180) rotate(8 18 18)'%3E%3Cpath d='M2 18a16 16 0 0 1 32 0z'/%3E%3Cpath d='M18 18v12a3 3 0 0 1-6 0'/%3E%3Cpath d='M18 2v2'/%3E%3C/g%3E %3Cg transform='translate(102 186)'%3E%3Cpath d='M10 26V6l16-4v20'/%3E%3Ccircle cx='6' cy='26' r='4'/%3E%3Ccircle cx='22' cy='22' r='4'/%3E%3C/g%3E %3Cg transform='translate(184 176) rotate(-10 16 16)'%3E%3Cpath d='M16 2l3 9 9 3-9 3-3 9-3-9-9-3 9-3z'/%3E%3C/g%3E %3Cg transform='translate(258 182)'%3E%3Cpath d='M16 2l12 7v14l-12 7-12-7V9z'/%3E%3C/g%3E %3Cg transform='translate(40 262) rotate(-4 20 12)'%3E%3Crect x='2' y='6' width='30' height='16' rx='3'/%3E%3Cpath d='M32 12h6l3 5v5h-9'/%3E%3Ccircle cx='10' cy='24' r='3'/%3E%3Ccircle cx='32' cy='24' r='3'/%3E%3C/g%3E %3Cg transform='translate(130 258)'%3E%3Cpath d='M14 2a12 12 0 0 0-12 12c0 9 12 20 12 20s12-11 12-20A12 12 0 0 0 14 2z'/%3E%3Ccircle cx='14' cy='14' r='4'/%3E%3C/g%3E %3Cg transform='translate(206 262) rotate(12 14 12)'%3E%3Cpath d='M14 24S2 16 2 9a6 6 0 0 1 12-2 6 6 0 0 1 12 2c0 7-12 15-12 15z'/%3E%3C/g%3E %3Cg transform='translate(276 262)'%3E%3Ccircle cx='6' cy='6' r='2'/%3E%3Ccircle cx='20' cy='14' r='2'/%3E%3Ccircle cx='8' cy='26' r='2'/%3E%3C/g%3E %3Cg transform='translate(150 140)'%3E%3Ccircle cx='4' cy='4' r='2'/%3E%3C/g%3E %3Cg transform='translate(70 150)'%3E%3Cpath d='M2 8c4-6 8 6 12 0s8 6 12 0'/%3E%3C/g%3E %3Cg transform='translate(236 150)'%3E%3Cpath d='M2 8c4-6 8 6 12 0s8 6 12 0'/%3E%3C/g%3E %3C/svg%3E") 0 0 / 320px 320px repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E %3Cg transform='translate(18 20) rotate(-8 14 16)'%3E%3Cpath d='M14 2a12 12 0 0 0-12 12c0 9 12 20 12 20s12-11 12-20A12 12 0 0 0 14 2z'/%3E%3Ccircle cx='14' cy='14' r='4'/%3E%3C/g%3E %3Cg transform='translate(96 14)'%3E%3Cpath d='M16 2l12 7v14l-12 7-12-7V9z'/%3E%3Cpath d='M16 10l6 3.5v7L16 24l-6-3.5v-7z'/%3E%3C/g%3E %3Cg transform='translate(176 24) rotate(6 18 14)'%3E%3Cpath d='M4 4h28a3 3 0 0 1 3 3v15a3 3 0 0 1-3 3H16l-8 7v-7H4a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3z'/%3E%3Cpath d='M9 12h18M9 18h11'/%3E%3C/g%3E %3Cg transform='translate(262 18) rotate(10 14 12)'%3E%3Cpath d='M14 24S2 16 2 9a6 6 0 0 1 12-2 6 6 0 0 1 12 2c0 7-12 15-12 15z'/%3E%3C/g%3E %3Cg transform='translate(30 92)'%3E%3Ccircle cx='16' cy='16' r='14'/%3E%3Cpath d='M16 8v8l6 4'/%3E%3C/g%3E %3Cg transform='translate(110 100) rotate(-6 18 14)'%3E%3Cpath d='M6 10h20l-4-4M26 10l-4 4'/%3E%3Cpath d='M30 22H10l4 4M10 22l4-4'/%3E%3C/g%3E %3Cg transform='translate(190 88)'%3E%3Cpath d='M6 10h20v10a8 8 0 0 1-8 8h-4a8 8 0 0 1-8-8z'/%3E%3Cpath d='M26 13h3a4 4 0 0 1 0 8h-3'/%3E%3Cpath d='M11 2c-2 2 2 4 0 6M17 2c-2 2 2 4 0 6'/%3E%3C/g%3E %3Cg transform='translate(266 96)'%3E%3Cpath d='M16 2L6 18h6l-6 10h20l-6-10h6z'/%3E%3Cpath d='M16 28v6'/%3E%3C/g%3E %3Cg transform='translate(16 180) rotate(8 18 18)'%3E%3Cpath d='M2 18a16 16 0 0 1 32 0z'/%3E%3Cpath d='M18 18v12a3 3 0 0 1-6 0'/%3E%3Cpath d='M18 2v2'/%3E%3C/g%3E %3Cg transform='translate(102 186)'%3E%3Cpath d='M10 26V6l16-4v20'/%3E%3Ccircle cx='6' cy='26' r='4'/%3E%3Ccircle cx='22' cy='22' r='4'/%3E%3C/g%3E %3Cg transform='translate(184 176) rotate(-10 16 16)'%3E%3Cpath d='M16 2l3 9 9 3-9 3-3 9-3-9-9-3 9-3z'/%3E%3C/g%3E %3Cg transform='translate(258 182)'%3E%3Cpath d='M16 2l12 7v14l-12 7-12-7V9z'/%3E%3C/g%3E %3Cg transform='translate(40 262) rotate(-4 20 12)'%3E%3Crect x='2' y='6' width='30' height='16' rx='3'/%3E%3Cpath d='M32 12h6l3 5v5h-9'/%3E%3Ccircle cx='10' cy='24' r='3'/%3E%3Ccircle cx='32' cy='24' r='3'/%3E%3C/g%3E %3Cg transform='translate(130 258)'%3E%3Cpath d='M14 2a12 12 0 0 0-12 12c0 9 12 20 12 20s12-11 12-20A12 12 0 0 0 14 2z'/%3E%3Ccircle cx='14' cy='14' r='4'/%3E%3C/g%3E %3Cg transform='translate(206 262) rotate(12 14 12)'%3E%3Cpath d='M14 24S2 16 2 9a6 6 0 0 1 12-2 6 6 0 0 1 12 2c0 7-12 15-12 15z'/%3E%3C/g%3E %3Cg transform='translate(276 262)'%3E%3Ccircle cx='6' cy='6' r='2'/%3E%3Ccircle cx='20' cy='14' r='2'/%3E%3Ccircle cx='8' cy='26' r='2'/%3E%3C/g%3E %3Cg transform='translate(150 140)'%3E%3Ccircle cx='4' cy='4' r='2'/%3E%3C/g%3E %3Cg transform='translate(70 150)'%3E%3Cpath d='M2 8c4-6 8 6 12 0s8 6 12 0'/%3E%3C/g%3E %3Cg transform='translate(236 150)'%3E%3Cpath d='M2 8c4-6 8 6 12 0s8 6 12 0'/%3E%3C/g%3E %3C/svg%3E") 0 0 / 320px 320px repeat;
   }
   .app { z-index: 1; }
-  .app { height: calc(var(--viewport-height) - 40px); margin-top: 20px; border-radius: 12px; box-shadow: var(--shadow); }
-  .thread-view { inset: 20px 0 auto; height: calc(var(--viewport-height) - 40px); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+  .app { height: calc(var(--viewport-height) - 40px); margin-top: 20px; border-radius: 12px; box-shadow: 0 0 0 1px var(--island-line), 0 18px 48px -12px rgba(0, 0, 0, 0.35); --appbar-top: 64px; }
   .frame { padding-top: 8px; }
 }
 

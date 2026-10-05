@@ -395,8 +395,10 @@ async function loadMore(): Promise<void> {
 }
 
 async function loadEngagement(): Promise<void> {
-  const response = await fetchEngagement(state.takeUnflagged());
+  const ids = state.takeUnflagged();
+  const response = await fetchEngagement(ids);
   if (!response) return;
+  state.markFlagged(ids);
   state.applyEngagement(response);
   scheduleRender();
 }

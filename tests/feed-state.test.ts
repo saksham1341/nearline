@@ -105,11 +105,21 @@ describe("client feed state", () => {
   it("asks about each thread's engagement once", () => {
     const state = new FeedState();
     state.applyHead("latest", [item(1), item(2)], null, null);
-    expect(state.takeUnflagged().sort()).toEqual([id(1), id(2)]);
+    const asked = state.takeUnflagged();
+    expect(asked.sort()).toEqual([id(1), id(2)]);
+    state.markFlagged(asked);
     expect(state.takeUnflagged()).toEqual([]);
     state.applyEngagement({ liked: [id(1)], reposted: [id(2)] });
     expect(state.likedPosts.has(id(1))).toBe(true);
     expect(state.repostedThreads.has(id(2))).toBe(true);
+  });
+
+  it("asks again about threads whose engagement fetch failed", () => {
+    const state = new FeedState();
+    state.applyHead("latest", [item(1)], null, null);
+    expect(state.takeUnflagged()).toEqual([id(1)]);
+    // The fetch failed, so nothing was marked.
+    expect(state.takeUnflagged()).toEqual([id(1)]);
   });
 
   describe("faded branches", () => {

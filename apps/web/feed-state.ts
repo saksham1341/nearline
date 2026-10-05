@@ -100,14 +100,16 @@ export class FeedState {
     for (const id of response.reposted) this.repostedThreads.add(id);
   }
 
-  /** Thread ids whose engagement has not been asked for yet. Marks them as asked. */
+  /** Thread ids whose engagement has not been fetched yet. Call `markFlagged` once the fetch succeeds. */
   takeUnflagged(): string[] {
-    const ids = [...this.threads.values()]
+    return [...this.threads.values()]
       .filter((entry) => !entry.pending && !this.flagged.has(entry.summary.id))
       .map((entry) => entry.summary.id)
       .slice(0, MAX_ENGAGEMENT_IDS);
-    for (const id of ids) this.flagged.add(id);
-    return ids;
+  }
+
+  markFlagged(threadIds: readonly string[]): void {
+    for (const id of threadIds) this.flagged.add(id);
   }
 
   visibleIds(tab: FeedTab): string[] {

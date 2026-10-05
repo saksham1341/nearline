@@ -205,6 +205,7 @@ h1, h2, p { margin: 0; }
 .feed { position: relative; flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 .thread-body, body.doc { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 .feed-list { display: grid; }
+.feed, .thread-body { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 .feed-list:empty { display: none; }
 .new-posts {
   position: sticky; z-index: 3; top: 12px; display: block; margin: 12px auto 0; min-height: 36px; padding: 0 16px;
@@ -298,23 +299,26 @@ h1, h2, p { margin: 0; }
 .post-reply::before { width: 32px; height: 32px; }
 .continue-thread { margin: 4px 16px 12px 60px; min-height: 36px; padding: 0 12px; border: 0; border-radius: var(--pill); background: transparent; color: var(--ink); font-size: var(--t-14); font-weight: 700; text-align: left; }
 
-/* ---------- Composers ---------- */
+/* ---------- Composers: a frosted island floating over the bottom of the column ---------- */
 .composer {
-  flex: none; position: relative;
+  position: absolute; z-index: 4; left: 50%; bottom: max(12px, calc(env(safe-area-inset-bottom, 0px) + 8px));
+  width: min(calc(100% - 24px), 640px); transform: translateX(-50%);
   display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px;
-  padding: 8px max(16px, env(safe-area-inset-right, 0px)) max(8px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
-  border-top: 1px solid var(--line); background: var(--bg);
+  padding: 6px;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent); border-radius: 28px;
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: var(--shadow);
 }
 .composer-field { display: block; }
 textarea {
   display: block; width: 100%; min-height: 44px; max-height: 140px; resize: none;
-  padding: 10px 16px; border: 1px solid transparent; border-radius: 22px; outline: 0;
-  background: var(--surface); color: var(--ink); caret-color: var(--ink);
+  padding: 11px 12px 11px 16px; border: 0; border-radius: 22px; outline: none;
+  background: transparent; color: var(--ink); caret-color: var(--ink);
   font-size: var(--t-16); line-height: 22px;
-  transition: border-color var(--fast), background-color var(--fast);
 }
 textarea::placeholder { color: var(--ink-3); opacity: 1; }
-textarea:focus-visible { border-color: var(--ink-3); background: var(--bg); }
+textarea:focus, textarea:focus-visible { outline: none; box-shadow: none; }
 .send-button {
   min-width: 72px; min-height: 44px; padding: 0 20px; border: 0; border-radius: var(--pill);
   background: var(--ink); color: var(--on-ink); font-size: var(--t-16); font-weight: 700;
@@ -323,7 +327,7 @@ textarea:focus-visible { border-color: var(--ink-3); background: var(--bg); }
 :root.room-active .send-button { background: var(--private); color: #ffffff; }
 .send-button:active:not(:disabled) { transform: scale(0.97); }
 .send-button:disabled { cursor: default; opacity: 0.4; }
-.reply-target-row { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--ink-2); font-size: var(--t-14); }
+.reply-target-row { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 8px 0 16px; color: var(--ink-2); font-size: var(--t-14); }
 
 /* ---------- Private feed dialog ---------- */
 .filter-dialog {
@@ -346,7 +350,7 @@ textarea:focus-visible { border-color: var(--ink-3); background: var(--bg); }
 .dialog-actions { margin-top: 24px; display: flex; justify-content: flex-end; gap: 8px; }
 
 .toast {
-  position: fixed; z-index: 40; left: 50%; bottom: max(88px, calc(80px + env(safe-area-inset-bottom, 0px)));
+  position: fixed; z-index: 40; left: 50%; bottom: max(96px, calc(88px + env(safe-area-inset-bottom, 0px)));
   width: max-content; max-width: calc(100% - 32px); padding: 12px 16px;
   border-radius: var(--radius); background: var(--ink); color: var(--on-ink);
   font-size: var(--t-14); font-weight: 600; box-shadow: var(--shadow);
@@ -407,7 +411,6 @@ textarea:focus-visible { border-color: var(--ink-3); background: var(--bg); }
   .status-line { margin-top: 0; padding-left: 16px; }
   .board { min-width: 0; }
   .post { padding-inline: 24px; }
-  .composer { padding-inline: 24px; }
   :root.room-active .board { border-top: 3px solid var(--private); }
   .board-head { position: relative; }
   .board-title { display: block; padding: 20px 24px 4px; font-size: var(--t-20); font-weight: 800; letter-spacing: -0.01em; }
@@ -418,7 +421,7 @@ textarea:focus-visible { border-color: var(--ink-3); background: var(--bg); }
 /* Wide screens: the open thread sits beside the feed. */
 @media (min-width: 1280px) {
   :root.thread-open .app { grid-template-columns: 280px minmax(0, 1fr) clamp(400px, 34vw, 560px); }
-  .thread-view { position: static; z-index: auto; grid-column: 3; grid-row: 1; width: auto; border-left: 1px solid var(--line); box-shadow: none; animation: none; }
+  .thread-view { position: relative; z-index: auto; grid-column: 3; grid-row: 1; width: auto; border-left: 1px solid var(--line); box-shadow: none; animation: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

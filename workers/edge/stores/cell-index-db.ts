@@ -71,7 +71,24 @@ const SCHEMA = [
   "CREATE TABLE IF NOT EXISTS applied_events (event_id TEXT PRIMARY KEY, at INTEGER NOT NULL)",
   "CREATE TABLE IF NOT EXISTS tombstones (thread_id TEXT PRIMARY KEY, at INTEGER NOT NULL)",
   "CREATE TABLE IF NOT EXISTS load (minute INTEGER PRIMARY KEY, writes INTEGER NOT NULL, reads INTEGER NOT NULL)",
+  // The newest known ordering snapshot per thread, kept even before any ref arrives, so a
+  // thread.updated delivered ahead of its ref.added is not lost.
+  `CREATE TABLE IF NOT EXISTS thread_state (
+    thread_id TEXT PRIMARY KEY,
+    expires_at INTEGER NOT NULL,
+    score REAL NOT NULL,
+    score_at INTEGER NOT NULL,
+    participant_count INTEGER NOT NULL
+  )`,
 ];
+
+interface ThreadStateRow {
+  thread_id: string;
+  expires_at: number;
+  score: number;
+  score_at: number;
+  participant_count: number;
+}
 
 const CELL_COLUMN: Record<ProximityScope, "cell9" | "cell10" | "cell11"> = { 9: "cell9", 10: "cell10", 11: "cell11" };
 
@@ -107,14 +124,20 @@ export class CellIndexDb {
       bindings.push(TREND_MIN_PARTICIPANTS);
     }
     const cursor = decodeCursor(q.cursor);
+    let having = "";
     if (cursor) {
-      filters.push(`(${order} < ? OR (${order} = ? AND thread_id < ?))`);
+      having = `HAVING (${order} < ? OR (${order} = ? AND thread_id < ?))`;
       bindings.push(cursor.key, cursor.key, cursor.threadId);
     }
     bindings.push(q.limit);
+    // One row per thread: its newest visible anchor (SQLite takes the bare columns from the MAX row).
+    // Without grouping, a thread with many reposts would fill the whole LIMIT on its own.
     const rows = this.sql.exec<RefRow>(
-      `SELECT thread_id, anchor_at, anchor_kind, by_author, cell11, room_tag, expires_at, score, score_at, trend_key, participant_count
-         FROM refs WHERE ${filters.join(" AND ")} ORDER BY ${order} DESC, thread_id DESC LIMIT ?`,
+      `SELECT thread_id, MAX(anchor_at) AS anchor_at, anchor_kind, by_author, cell11, room_tag, expires_at, score, score_at,
+              trend_key, participant_count
+         FROM refs WHERE ${filters.join(" AND ")}
+        GROUP BY thread_id ${having}
+        ORDER BY ${order} DESC, thread_id DESC LIMIT ?`,
       ...bindings,
     ).toArray();
     return { refs: rows.map(toRecord), version: this.version() };
@@ -131,6 +154,7 @@ export class CellIndexDb {
 
   sweep(now: number): void {
     this.sql.exec("DELETE FROM refs WHERE expires_at <= ?", now);
+    this.sql.exec("DELETE FROM thread_state WHERE expires_at <= ?", now);
     this.sql.exec("DELETE FROM applied_events WHERE at < ?", now - EVENT_RETENTION_MS);
     this.sql.exec("DELETE FROM tombstones WHERE at < ?", now - EVENT_RETENTION_MS);
     this.sql.exec("DELETE FROM load WHERE minute < ?", minuteOf(now) - 60);
@@ -165,17 +189,19 @@ export class CellIndexDb {
         const ref = event.ref;
         if (this.isTombstoned(ref.threadId)) return false;
         const cells = refCells(ref.location);
+        const state = this.mergeState(ref.threadId, ref.expiresAt, ref.score, ref.scoreAt, ref.participantCount);
         this.sql.exec(
           `INSERT INTO refs (thread_id, anchor_at, anchor_kind, by_author, cell9, cell10, cell11, room_tag,
              expires_at, score, score_at, trend_key, participant_count)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING`,
           ref.threadId, ref.anchorAt, ref.kind, ref.byAuthor, cells.cell9, cells.cell10, cells.cell11, ref.roomTag,
-          ref.expiresAt, ref.score, ref.scoreAt, trendKey({ value: ref.score, at: ref.scoreAt }), ref.participantCount,
+          state.expires_at, state.score, state.score_at, trendKey({ value: state.score, at: state.score_at }), state.participant_count,
         );
         return true;
       }
       case "thread.updated": {
         if (this.isTombstoned(event.threadId)) return false;
+        this.mergeState(event.threadId, event.expiresAt, event.score, event.scoreAt, event.participantCount);
         this.sql.exec(
           "UPDATE refs SET expires_at = MAX(expires_at, ?), participant_count = MAX(participant_count, ?) WHERE thread_id = ?",
           event.expiresAt, event.participantCount, event.threadId,
@@ -189,6 +215,7 @@ export class CellIndexDb {
       }
       case "thread.expired": {
         this.sql.exec("DELETE FROM refs WHERE thread_id = ?", event.threadId);
+        this.sql.exec("DELETE FROM thread_state WHERE thread_id = ?", event.threadId);
         this.sql.exec(
           "INSERT INTO tombstones (thread_id, at) VALUES (?, ?) ON CONFLICT DO UPDATE SET at = excluded.at",
           event.threadId, event.at,
@@ -196,6 +223,20 @@ export class CellIndexDb {
         return true;
       }
     }
+  }
+
+  /** Folds a snapshot into the stored one: latest expiry and participant count, newest score. Returns the result. */
+  private mergeState(threadId: string, expiresAt: number, score: number, scoreAt: number, participants: number): ThreadStateRow {
+    this.sql.exec(
+      `INSERT INTO thread_state (thread_id, expires_at, score, score_at, participant_count) VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(thread_id) DO UPDATE SET
+         expires_at = MAX(expires_at, excluded.expires_at),
+         participant_count = MAX(participant_count, excluded.participant_count),
+         score = CASE WHEN excluded.score_at >= score_at THEN excluded.score ELSE score END,
+         score_at = MAX(score_at, excluded.score_at)`,
+      threadId, expiresAt, score, scoreAt, participants,
+    );
+    return this.sql.exec<ThreadStateRow>("SELECT * FROM thread_state WHERE thread_id = ?", threadId).toArray()[0]!;
   }
 
   private isTombstoned(threadId: string): boolean {

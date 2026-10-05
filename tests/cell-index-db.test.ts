@@ -118,4 +118,21 @@ describe("cell index", () => {
     expect(store.partition()).toBe("p");
     expect(store.loadSamples()).toEqual([{ minute: Math.floor(T / 60_000), writes: 2, reads: 1 }]);
   });
+
+  it("keeps the newest snapshot when an update arrives before its ref", () => {
+    const store = db();
+    store.apply([{ eventId: eventId(), type: "thread.updated", partition: "p", threadId: id(1), expiresAt: T + 29 * 60_000, score: 9, scoreAt: T + 14 * 60_000, participantCount: 3 }], T);
+    store.apply([added(id(1), { anchorAt: T + 10 * 60_000, kind: "repost", expiresAt: T + 25 * 60_000, score: 2, scoreAt: T + 10 * 60_000, participantCount: 2 })], T);
+    const [ref] = query(store, london, 10).refs;
+    expect(ref).toMatchObject({ expiresAt: T + 29 * 60_000, score: 9, scoreAt: T + 14 * 60_000, participantCount: 3 });
+  });
+
+  it("returns each thread once, so one heavily reposted thread cannot fill a page", () => {
+    const store = db();
+    const reposts = Array.from({ length: 70 }, (_, i) => added(id(1), { anchorAt: T + 100 + i, kind: "repost", byAuthor: `bb${String(i).padStart(6, "0")}`, participantCount: 3, score: 50 }));
+    store.apply([...reposts, added(id(2), { anchorAt: T + 1, participantCount: 2, score: 5 }), added(id(3), { anchorAt: T + 2, participantCount: 2, score: 4 })], T);
+    expect(query(store, london, 10, "latest").refs.map((ref) => ref.threadId)).toEqual([id(1), id(3), id(2)]);
+    expect(query(store, london, 10, "latest").refs[0]).toMatchObject({ anchorAt: T + 169, kind: "repost" });
+    expect(query(store, london, 10, "trending").refs.map((ref) => ref.threadId)).toEqual([id(1), id(2), id(3)]);
+  });
 });

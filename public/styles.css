@@ -196,15 +196,14 @@ body:has(> .gate:not([hidden]))::before { content: ""; }
   padding: max(32px, env(safe-area-inset-top, 0px)) max(20px, env(safe-area-inset-right, 0px)) max(32px, env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px));
 }
 .gate-flyer {
-  width: min(100%, 420px); padding: 0 24px 28px; overflow: hidden; animation: rise-in 360ms var(--ease-out) both;
+  width: min(100%, 420px); padding: 40px 24px 32px; overflow: hidden; animation: rise-in 360ms var(--ease-out) both;
   border-radius: 16px; background: var(--bg);
   box-shadow: 0 0 0 1px var(--island-line), 0 18px 48px -12px rgba(0, 0, 0, 0.35);
+  display: grid; gap: 16px; place-items: center; text-align: center;
 }
-.gate-brand { margin: 0 -24px 28px; padding: 18px 24px; display: flex; align-items: center; gap: 10px; background: var(--bar); color: var(--bar-ink); font-size: var(--t-20); font-weight: 800; letter-spacing: -0.02em; }
-.gate-brand::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--live); }
-.gate-logo { width: 32px; height: 32px; flex: none; color: var(--bar-ink); }
-.gate h1 { margin-bottom: 12px; font-size: clamp(28px, 8vw, 36px); font-weight: 800; letter-spacing: -0.025em; line-height: 1.05; text-wrap: balance; }
-.gate-copy { max-width: 36ch; margin-bottom: 28px; color: var(--ink-2); font-size: var(--t-16); line-height: 1.5; }
+.gate-logo { width: 64px; height: 64px; color: var(--ink); }
+.gate h1 { margin: 0; font-size: clamp(28px, 8vw, 36px); font-weight: 800; letter-spacing: -0.025em; line-height: 1.05; text-wrap: balance; }
+.gate-copy { max-width: 36ch; margin: 0; color: var(--ink-2); font-size: var(--t-16); line-height: 1.5; }
 .gate-actions { display: grid; gap: 12px; }
 .gate .button { width: 100%; min-height: 48px; }
 .gate .button.primary { background: var(--accent); color: var(--on-accent); }

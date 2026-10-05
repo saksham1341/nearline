@@ -662,8 +662,8 @@ function render(): void {
   preserveScroll(() => renderFeed(elements.feedList, state, activeTab, { currentAuthor, now }));
   const empty = state.visibleIds(activeTab).length === 0;
   elements.empty.hidden = !empty;
-  elements.emptyTitle.textContent = activeTab === "latest" ? "Nothing pinned here yet" : "Nothing trending";
-  elements.emptyCopy.textContent = activeTab === "latest" ? "Pin the first note." : "Threads trend once more than one person joins in.";
+  elements.emptyTitle.textContent = activeTab === "latest" ? "Nothing happening here yet" : "Nothing trending";
+  elements.emptyCopy.textContent = activeTab === "latest" ? "Be the first to post." : "Threads trend once more than one person joins in.";
   elements.loadMore.hidden = empty || !state.cursors[activeTab];
   renderThreadPanel(now);
   refreshTimes(document.body, now);

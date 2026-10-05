@@ -29,6 +29,15 @@
         ],
         "createdAt": "2026-10-05T08:18:22.171Z",
         "reason": "Claude (agent) decided: .doc-shell has clamp(18px, 5vw, 48px) side padding; detector does not evaluate clamp()"
+      },
+      {
+        "rule": "cream-palette",
+        "value": "*",
+        "files": [
+          "public/index.html"
+        ],
+        "createdAt": "2026-10-05T08:32:46.539Z",
+        "reason": "user confirmed: picked the 'Quiet board' palette (#e4dfd6 board, #fbfaf7 flyers) from offered options"
       }
     ]
   }

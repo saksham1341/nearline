@@ -3,7 +3,8 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#171411">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
     <meta name="description" content="How Nearline works: location filtering, fading threads, trending, and the system design behind them.">
     <title>How Nearline Works</title>
     <link rel="stylesheet" href="/styles.css">
@@ -76,7 +77,7 @@
             <figcaption>Your region at any range: the hexagon you are in (solid) and its six neighbours (dashed). A post is visible to you when its location falls inside these seven hexagons at your range's size.</figcaption>
           </figure>
           <p>This rule is symmetric: if you can see someone's post, they can see yours at the same range. It is also the only definition of "nearby" in the whole system. The browser, the feed and the check that decides whether you may reply all use the same function.</p>
-          <p>The range is always shown at the top of the board, so you know how far you are listening before you read anything.</p>
+          <p>The range is always shown at the top of the feed, so you know how far you are listening before you read anything.</p>
         </section>
 
         <section id="threads" aria-labelledby="threads-title">
@@ -100,7 +101,7 @@
             </svg>
             <figcaption>The post's own expiry was replaced by the reply's, then by the like's. Fifteen quiet minutes after the like, the thread disappears for everyone.</figcaption>
           </figure>
-          <p>In the app, every post is a flyer with tear-off tabs along its bottom edge: one tab for each minute it has left. A tab tears off each quiet minute, and all of them grow back the moment someone replies, likes or reposts. Under the opening post the tabs count down the whole thread; under a reply, that reply's branch.</p>
+          <p>In the app, every post has a thin line beneath it that shortens as its time runs out, with the minutes left beside it. The line refills the moment someone replies, likes or reposts. Under the opening post it counts down the whole thread; under a reply, that reply's branch.</p>
           <h3>Branches fade on their own</h3>
           <p>The same rule applies inside a thread. Every reply is the start of its own branch, and a branch fades fifteen minutes after the last thing that happened anywhere in it: a reply below it, or a like on any post in it. A side conversation nobody touched goes quiet and disappears, while the conversation still going on stays, together with every post above it that gives it context. The opening post's branch is the whole thread, which is why the thread itself lasts as long as anything in it is alive.</p>
           <p>Each post records only its own last activity. A branch's expiry is worked out from the tree when it is needed, so there is nothing stored that could fall out of date.</p>
@@ -159,8 +160,8 @@
             <svg viewBox="0 0 760 470" role="img" aria-labelledby="parts-svg-title">
               <title id="parts-svg-title">Architecture: browser, edge worker, stores, queue and cache</title>
               <defs>
-                <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#171411"/></marker>
-                <marker id="arrow-yellow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#c9361f"/></marker>
+                <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" class="marker-ink"/></marker>
+                <marker id="arrow-yellow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" class="marker-accent"/></marker>
               </defs>
               <rect class="diagram-box-strong" x="290" y="14" width="180" height="50" rx="3"/>
               <text class="diagram-text-dark" x="380" y="45" text-anchor="middle">Your browser</text>
@@ -301,7 +302,7 @@
 
         <section id="identity" aria-labelledby="identity-title">
           <h2 id="identity-title">12. Identity and sign-in</h2>
-          <p>There are no usernames or passwords. You sign in with a <strong>passkey</strong>: a key pair your device creates and guards with your fingerprint, face or PIN. The server stores only the public half. Your public identity is the first eight characters of a hash of that public key, like <code>@4f92ac17</code>. The colour of the paper your posts are printed on, and of the pin holding them up, is derived from the same characters, so you can tell people apart without profiles.</p>
+          <p>There are no usernames or passwords. You sign in with a <strong>passkey</strong>: a key pair your device creates and guards with your fingerprint, face or PIN. The server stores only the public half. Your public identity is the first eight characters of a hash of that public key, like <code>@4f92ac17</code>. The colour of the dot beside your posts is derived from the same characters, so you can tell people apart without profiles.</p>
           <p>Signing out deletes your long-lived session at once. An access token already issued stays valid until it expires, at most an hour later: the price of checking tokens without a database.</p>
         </section>
 

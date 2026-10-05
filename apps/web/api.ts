@@ -1,10 +1,11 @@
-import type {
-  ActionRequest,
-  ActionResponse,
-  EngagementResponse,
-  FeedResponse,
-  FeedTab,
-  ThreadResponse,
+import {
+  isErrorCode,
+  type ActionRequest,
+  type ActionResponse,
+  type EngagementResponse,
+  type FeedResponse,
+  type FeedTab,
+  type ThreadResponse,
 } from "../../packages/protocol/index.ts";
 import type { ProximityScope } from "../../packages/shared/constants.ts";
 
@@ -62,7 +63,10 @@ export async function sendAction(action: ActionRequest): Promise<ActionResponse>
       credentials: "same-origin",
     });
     if (response.status === 401) return { id: action.id, ok: false, code: "UNAUTHORIZED" };
-    return await response.json() as ActionResponse;
+    const body = await response.json().catch(() => null) as Partial<ActionResponse> & { error?: unknown } | null;
+    if (body && typeof body.ok === "boolean") return body as ActionResponse;
+    // Errors raised before the action handler (origin check, server faults) carry { error } only.
+    return { id: action.id, ok: false, code: isErrorCode(body?.error) ? body.error : "UNAVAILABLE" };
   } catch {
     return { id: action.id, ok: false, code: "UNAVAILABLE" };
   }

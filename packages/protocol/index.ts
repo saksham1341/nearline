@@ -1,24 +1,31 @@
 import { isCanonicalLocation, isScopeCell, locationToScopeCell } from "../geo/index.ts";
 import { isProximityScope, MAX_MESSAGE_CHARS, type ProximityScope } from "../shared/constants.ts";
 
-export type ErrorCode =
-  | "BAD_REQUEST"
-  | "UNAUTHORIZED"
-  | "FORBIDDEN_ORIGIN"
-  | "INVALID_LOCATION"
-  | "INVALID_SCOPE"
-  | "INVALID_ROOM_TAG"
-  | "INVALID_MESSAGE"
-  | "RATE_LIMITED"
-  | "THREAD_NOT_FOUND"
-  | "THREAD_EXPIRED"
-  | "NOT_VISIBLE"
-  | "PARENT_NOT_FOUND"
-  | "POST_NOT_FOUND"
-  | "THREAD_FULL"
-  | "ALREADY_REPOSTED"
-  | "NOT_AUTHOR"
-  | "UNAVAILABLE";
+export const ERROR_CODES = [
+  "BAD_REQUEST",
+  "UNAUTHORIZED",
+  "FORBIDDEN_ORIGIN",
+  "INVALID_LOCATION",
+  "INVALID_SCOPE",
+  "INVALID_ROOM_TAG",
+  "INVALID_MESSAGE",
+  "RATE_LIMITED",
+  "THREAD_NOT_FOUND",
+  "THREAD_EXPIRED",
+  "NOT_VISIBLE",
+  "PARENT_NOT_FOUND",
+  "POST_NOT_FOUND",
+  "THREAD_FULL",
+  "ALREADY_REPOSTED",
+  "NOT_AUTHOR",
+  "UNAVAILABLE",
+] as const;
+
+export type ErrorCode = (typeof ERROR_CODES)[number];
+
+export function isErrorCode(value: unknown): value is ErrorCode {
+  return typeof value === "string" && (ERROR_CODES as readonly string[]).includes(value);
+}
 
 /** The public line uses the empty tag; private filters use a SHA-256 hex digest. */
 export function isRoomTag(value: unknown): value is string {

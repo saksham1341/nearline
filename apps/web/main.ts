@@ -190,10 +190,7 @@ function bindEvents(): void {
   elements.feedList.addEventListener("click", handlePostClick);
   elements.feedList.addEventListener("keydown", handlePostKey);
   elements.threadBody.addEventListener("click", handlePostClick);
-  elements.threadBack.addEventListener("click", () => {
-    if ((history.state as { thread?: string } | null)?.thread) history.back();
-    else closeThread();
-  });
+  elements.threadBack.addEventListener("click", closeThread);
   elements.threadUp.addEventListener("click", focusUp);
   elements.loadMore.addEventListener("click", () => void loadMore());
   elements.newPosts.addEventListener("click", () => {
@@ -203,9 +200,6 @@ function bindEvents(): void {
   elements.feed.addEventListener("scroll", () => {
     if (elements.feed.scrollTop < 80) hideNewPosts();
   }, { passive: true });
-  window.addEventListener("popstate", () => {
-    if (state.open && !(history.state as { thread?: string } | null)?.thread) closeThread();
-  });
   document.addEventListener("visibilitychange", syncPolling);
   window.visualViewport?.addEventListener("resize", syncViewportHeight);
   window.addEventListener("orientationchange", syncViewportHeight);
@@ -641,7 +635,6 @@ function openThread(threadId: string): void {
   if (state.open?.id !== threadId) {
     state.beginOpen(threadId);
     setReplyTarget(null);
-    history.pushState({ thread: threadId }, "");
   }
   threadPoller.start();
   threadPoller.poke();

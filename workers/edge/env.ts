@@ -11,9 +11,6 @@ export interface Env {
   RP_NAME: string;
   RP_ID: string;
   ORIGIN: string;
+  SESSION_KEY: string;
 }
 
-export interface AuthenticatedUser {
-  id: string;
-  authorHash: string;
-}

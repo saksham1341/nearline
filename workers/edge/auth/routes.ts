@@ -10,7 +10,7 @@ import {
 import { CHALLENGE_TTL_MS } from "../../../packages/shared/constants.ts";
 import { bytesToHex, randomToken, sha256 } from "../../../packages/shared/encoding.ts";
 import type { Env } from "../env.ts";
-import { cookie, HttpError, json, parseCookies, readJson } from "../http.ts";
+import { appendCookies, cookie, HttpError, json, parseCookies, readJson } from "../http.ts";
 import { authenticate, createSession, destroySession } from "./session.ts";
 
 const FLOW_COOKIE = "pc_auth_flow";
@@ -33,12 +33,13 @@ interface CredentialRow {
 
 export async function handleAuth(request: Request, env: Env, pathname: string): Promise<Response> {
   if (request.method === "GET" && pathname === "/api/auth/session") {
-    const user = await authenticate(request, env);
-    return json(user ? { authenticated: true, author: user.authorHash.slice(0, 8) } : { authenticated: false });
+    const auth = await authenticate(request, env);
+    const body = auth ? { authenticated: true, author: auth.user.author } : { authenticated: false };
+    return appendCookies(json(body), auth?.setCookies ?? []);
   }
 
   if (request.method === "POST" && pathname === "/api/auth/logout") {
-    return json({ ok: true }, { headers: { "set-cookie": await destroySession(request, env) } });
+    return appendCookies(json({ ok: true }), await destroySession(request, env));
   }
 
   if (request.method === "POST" && pathname === "/api/auth/register/options") {
@@ -92,10 +93,8 @@ export async function handleAuth(request: Request, env: Env, pathname: string): 
     } catch {
       throw new HttpError(409, "CREDENTIAL_EXISTS");
     }
-    return json(
-      { verified: true, author: authorHash.slice(0, 8) },
-      { headers: { "set-cookie": await createSession(env, flow.user_id) } },
-    );
+    const author = authorHash.slice(0, 8);
+    return appendCookies(json({ verified: true, author }), await createSession(env, flow.user_id, author));
   }
 
   if (request.method === "POST" && pathname === "/api/auth/login/options") {
@@ -136,7 +135,10 @@ export async function handleAuth(request: Request, env: Env, pathname: string): 
     await env.DB.prepare(
       "UPDATE credentials SET sign_count = ?, last_used_at = ? WHERE credential_id = ?",
     ).bind(verification.authenticationInfo.newCounter, Date.now(), stored.credential_id).run();
-    return json({ verified: true }, { headers: { "set-cookie": await createSession(env, stored.user_id) } });
+    const owner = await env.DB.prepare("SELECT author_hash FROM users WHERE id = ?")
+      .bind(stored.user_id).first<{ author_hash: string }>();
+    if (!owner) throw new HttpError(401, "UNKNOWN_CREDENTIAL");
+    return appendCookies(json({ verified: true }), await createSession(env, stored.user_id, owner.author_hash.slice(0, 8)));
   }
 
   throw new HttpError(404, "NOT_FOUND");

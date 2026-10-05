@@ -52,8 +52,9 @@ async function openSocket(request: Request, env: Env, url: URL): Promise<Respons
   }
   // SameSite cookies stop cross-site pages, not sibling subdomains; browsers always send Origin on WebSocket upgrades.
   if (request.headers.get("origin") !== env.ORIGIN) throw new HttpError(403, "FORBIDDEN_ORIGIN");
-  const user = await authenticate(request, env);
-  if (!user) throw new HttpError(401, "UNAUTHORIZED");
+  const auth = await authenticate(request, env);
+  if (!auth) throw new HttpError(401, "UNAUTHORIZED");
+  const user = { id: auth.user.id, authorHash: auth.user.author };
   const location = url.searchParams.get("location");
   if (!isCanonicalLocation(location)) throw new HttpError(400, "INVALID_LOCATION");
   // Scope and room arrive with the upgrade so the connection never starts on the public, default-range filter.

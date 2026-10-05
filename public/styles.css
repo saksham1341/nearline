@@ -417,14 +417,8 @@ textarea:focus-visible { border-color: var(--ink-3); background: var(--bg); }
 
 /* Wide screens: the open thread sits beside the feed. */
 @media (min-width: 1280px) {
-  .app { grid-template-columns: 280px minmax(0, 1fr) clamp(400px, 34vw, 560px); }
+  :root.thread-open .app { grid-template-columns: 280px minmax(0, 1fr) clamp(400px, 34vw, 560px); }
   .thread-view { position: static; z-index: auto; grid-column: 3; grid-row: 1; width: auto; border-left: 1px solid var(--line); box-shadow: none; animation: none; }
-  /* With no thread open, the right column says what it is for. */
-  :root:not(.thread-open) .app::after {
-    content: "Select a post to read its thread"; grid-column: 3; grid-row: 1;
-    display: grid; place-items: center; padding: 24px; border-left: 1px solid var(--line);
-    color: var(--ink-3); font-size: var(--t-14); text-align: center;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

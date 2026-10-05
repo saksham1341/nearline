@@ -6,6 +6,7 @@ import type { CellEvent } from "../events.ts";
 import type { CellIndexApi } from "../services.ts";
 import { CellIndexDb, type HasRefQuery, type RefPage, type RefQuery } from "../stores/cell-index-db.ts";
 import { durableSql } from "../stores/sql.ts";
+import { maintainPartition } from "./partition-maintenance.ts";
 
 const ALARM_INTERVAL_MS = 60_000;
 
@@ -39,6 +40,12 @@ export class CellIndex extends DurableObject<Env> implements CellIndexApi {
   async alarm(): Promise<void> {
     const now = Date.now();
     this.db.sweep(now);
+    try {
+      await maintainPartition(this.db, this.env.PARTITION_MAP, now);
+    } catch (error) {
+      // Partition tuning is best-effort; sweeping must keep running.
+      console.warn("Partition maintenance failed", error);
+    }
     const recentLoad = this.db.loadSamples().some((sample) => sample.minute >= minuteOf(now) - MERGE_QUIET_MINUTES);
     if (!this.db.isEmpty() || recentLoad) await this.ctx.storage.setAlarm(now + ALARM_INTERVAL_MS);
   }

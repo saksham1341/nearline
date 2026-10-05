@@ -13,6 +13,8 @@ export class Poller {
   private lastChange: number;
   private running = false;
   private inFlight = false;
+  /** A poke arrived while a poll was running: its answer may already be out of date. */
+  private pokedInFlight = false;
 
   constructor(
     private readonly base: number,
@@ -40,6 +42,10 @@ export class Poller {
     this.lastChange = this.clock();
     this.delay = this.base;
     if (!this.running) return;
+    if (this.inFlight) {
+      this.pokedInFlight = true;
+      return;
+    }
     if (this.timer !== null) clearTimeout(this.timer);
     this.timer = null;
     void this.tick();
@@ -58,6 +64,13 @@ export class Poller {
     }
     if (changed) this.lastChange = this.clock();
     this.delay = changed ? this.base : nextDelay(this.base, this.delay, this.clock() - this.lastChange);
+    if (this.pokedInFlight && this.running) {
+      this.pokedInFlight = false;
+      if (this.timer !== null) clearTimeout(this.timer);
+      this.timer = null;
+      void this.tick();
+      return;
+    }
     if (this.running && this.timer === null) this.timer = setTimeout(() => {
       this.timer = null;
       void this.tick();

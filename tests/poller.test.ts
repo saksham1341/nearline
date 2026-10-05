@@ -26,6 +26,22 @@ describe("polling", () => {
       expect(task).toHaveBeenCalledTimes(2);
     });
 
+    it("runs again right after an in-flight poll when poked during it", async () => {
+      let release: (() => void) | null = null;
+      const task = vi.fn(() => new Promise<boolean>((resolve) => { release = () => resolve(false); }));
+      const poller = new Poller(10_000, task, () => Date.now());
+      poller.start();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(task).toHaveBeenCalledTimes(1);
+      poller.poke();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(task).toHaveBeenCalledTimes(1);
+      release!();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(task).toHaveBeenCalledTimes(2);
+      poller.stop();
+    });
+
     it("runs at once when poked", async () => {
       const task = vi.fn(async () => false);
       const poller = new Poller(10_000, task, () => Date.now());

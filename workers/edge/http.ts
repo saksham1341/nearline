@@ -19,8 +19,10 @@ export function appendCookies(response: Response, cookies: readonly string[]): R
  * Worker's own edge cache can share them; on the way out they become private, so no proxy between
  * Cloudflare and the browser stores them. Any response carrying a session cookie is never stored.
  */
-export function finalizeApiResponse(response: Response, cookies: readonly string[]): Response {
+export function finalizeApiResponse(response: Response, cookies: readonly string[], now: number): Response {
   const copy = new Response(response.body, response);
+  // Fresh on every response: cached bodies carry the serverTime of when they were built.
+  copy.headers.set("x-server-time", String(now));
   if ((copy.headers.get("cache-control") ?? "").includes("public")) copy.headers.set("cache-control", "private, no-cache");
   if (cookies.length === 0) return copy;
   copy.headers.set("cache-control", "private, no-store");

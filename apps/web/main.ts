@@ -367,8 +367,9 @@ async function pollFeed(): Promise<boolean> {
     return false;
   }
   setSyncState(true, "Updated just now");
+  if (result.serverTime !== null) state.setServerTime(result.serverTime);
   if (result.status === "unchanged" || key !== viewKey(activeTab)) return false;
-  state.setServerTime(result.data.serverTime);
+  if (result.serverTime === null) state.setServerTime(result.data.serverTime);
   const added = state.applyHead(tab, result.data.items, result.data.nextCursor, result.etag);
   if (tab === "trending") state.resortTrending(state.now());
   if (added.length > 0 && tab === "latest") {
@@ -418,8 +419,9 @@ async function pollThread(): Promise<boolean> {
     scheduleRender();
     return false;
   }
+  if (result.status === "unchanged" && result.serverTime !== null) state.setServerTime(result.serverTime);
   if (result.status !== "fresh") return false;
-  state.setServerTime(result.data.serverTime);
+  state.setServerTime(result.serverTime ?? result.data.serverTime);
   state.applyTree(result.data, result.etag);
   scheduleRender();
   return true;

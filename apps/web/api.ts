@@ -10,8 +10,8 @@ import {
 import type { ProximityScope } from "../../packages/shared/constants.ts";
 
 export type Fetched<T> =
-  | { status: "fresh"; data: T; etag: string | null }
-  | { status: "unchanged" }
+  | { status: "fresh"; data: T; etag: string | null; serverTime: number | null }
+  | { status: "unchanged"; serverTime: number | null }
   | { status: "gone" }
   | { status: "unauthorized" }
   | { status: "error" };
@@ -31,11 +31,13 @@ async function getJson<T>(url: string, etag: string | null): Promise<Fetched<T>>
   } catch {
     return { status: "error" };
   }
-  if (response.status === 304) return { status: "unchanged" };
+  const header = Number(response.headers.get("x-server-time"));
+  const serverTime = Number.isFinite(header) && header > 0 ? header : null;
+  if (response.status === 304) return { status: "unchanged", serverTime };
   if (response.status === 401) return { status: "unauthorized" };
   if (response.status === 404 || response.status === 410) return { status: "gone" };
   if (!response.ok) return { status: "error" };
-  return { status: "fresh", data: await response.json() as T, etag: response.headers.get("etag") };
+  return { status: "fresh", data: await response.json() as T, etag: response.headers.get("etag"), serverTime };
 }
 
 export function fetchFeed(params: FeedParams, etag: string | null): Promise<Fetched<FeedResponse>> {

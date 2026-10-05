@@ -65,7 +65,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   const auth = await authenticate(request, env);
   if (!auth) throw new HttpError(401, "UNAUTHORIZED");
   const ctx: ApiContext = { services: createServices(env), user: auth.user, now: Date.now() };
-  return finalizeApiResponse(await route(request, url, ctx), auth.setCookies);
+  return finalizeApiResponse(await route(request, url, ctx), auth.setCookies, Date.now());
 }
 
 async function route(request: Request, url: URL, ctx: ApiContext): Promise<Response> {

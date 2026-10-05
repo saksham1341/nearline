@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { sendAction } from "../apps/web/api.ts";
+import { fetchFeed, sendAction } from "../apps/web/api.ts";
 
 const action = { id: "11111111-1111-4111-8111-111111111111", type: "delete" as const, threadId: "t", postId: "p" };
 
@@ -22,5 +22,11 @@ describe("sending actions", () => {
     expect(await sendAction(action)).toEqual({ id: action.id, ok: false, code: "UNAVAILABLE" });
     respond(502, "<html>bad gateway</html>");
     expect(await sendAction(action)).toEqual({ id: action.id, ok: false, code: "UNAVAILABLE" });
+  });
+
+  it("reads the server's clock from the response header, even on 304", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 304, headers: { "x-server-time": "5000" } })));
+    const result = await fetchFeed({ cell: "c", scope: 10, room: "", tab: "latest", cursor: null }, "\"v\"");
+    expect(result).toEqual({ status: "unchanged", serverTime: 5_000 });
   });
 });

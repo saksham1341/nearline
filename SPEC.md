@@ -1,7 +1,7 @@
 # Nearline
 ## v1 Product & Technical Specification
 
-**Status:** Locked v1 design  
+**Status:** v1 design; the live chat parts were superseded on 2026-10-05 by the local feed (`docs/superpowers/specs/2026-10-05-local-feed-design.md`). Where this document and that design disagree, the design wins.  
 **Stack:** Cloudflare Workers + Durable Objects + D1 + H3  
 **Transport:** Hibernating WebSockets  
 **Client:** Browser-only web application  
@@ -60,19 +60,13 @@ A room is simply a deterministic tag derived from credentials entered by users.
 
 Messages carrying the same room tag form a filtered view of the geographic message stream.
 
-### 2.3 The client owns its transcript
+### 2.3 Threads are the unit of persistence
 
-The visible conversation accumulated by the browser is primarily client state.
+Posts, replies, likes and reposts belong to a thread. The server keeps a thread only while it is active: every thread is deleted fifteen minutes after its last activity (a reply, a like or a repost).
 
-Changing location, proximity scope, or room does not clear messages already displayed.
+### 2.4 Delivery is pull-only
 
-The backend does not retain chat history.
-
-### 2.4 Delivery is live-only
-
-Messages are delivered only to eligible connections that are active when the message is sent.
-
-Temporary disconnections and reconnects may therefore miss messages. This is an intentional part of the ephemeral product model rather than a gap to recover.
+Clients poll for feeds and threads. The server never pushes. Feeds are shared and cached per scope cell, room and tab, so a crowd in one place costs about as much as one person.
 
 ### 2.5 Location authenticity is not guaranteed
 
@@ -453,406 +447,18 @@ Messages should be treated as plain text and safely escaped during rendering.
 
 ---
 
-# 8. Durable Object Sharding
+# 8–16. Local Feed Architecture (replaces sharding, WebSockets and fanout)
 
-## 8.1 Shard resolution
+The live chat's geographic shard Durable Object, WebSocket protocol and fanout are retired. The system is now:
 
-Geographic Durable Objects are keyed at:
+- **Edge Worker** (stateless): authentication, validation, rate limits, feed assembly, edge caching.
+- **ThreadStore** Durable Object, one per thread: the single source of truth for a thread's posts, reply tree, counts, trending score and expiry. It deletes itself when the thread expires.
+- **CellIndex** Durable Object, one per partition cell (H3 resolution 7 to 9, splitting and merging with load): references to threads anchored in its cell, with ordering data only.
+- **UserState** Durable Object, 65,536 buckets: each user's likes and reposts.
+- **Queue** `nearline-feed-events`: propagates follow-on changes between them, batched, at least once, idempotently.
+- **Workers KV** `PARTITION_MAP`: which cells are split.
 
-```text
-H3 resolution 5
-```
-
-Call this:
-
-```text
-SHARD_RESOLUTION = 5
-```
-
-An H3 r5 hexagon has an average area around 253 km².
-
-This gives geographically broad objects comparable to the earlier intent behind using coarse geohash infrastructure cells.
-
-The shard resolution is infrastructural and completely independent of visible proximity scopes.
-
-## 8.2 Shard ownership
-
-For any canonical r11 location:
-
-```ts
-shardId =
-  cellToParent(location, SHARD_RESOLUTION)
-```
-
-Every location therefore has exactly one home shard.
-
-Every message is persisted exactly once, by its home shard.
-
-## 8.3 Client coordinator
-
-A connected client has exactly one WebSocket.
-
-Its coordinator DO is the shard corresponding to the client's current location.
-
-```ts
-coordinator =
-  cellToParent(client.location, 5)
-```
-
-When the user moves inside the same r5 shard:
-
-```text
-send position event
-```
-
-When the user crosses into another r5 shard:
-
-```text
-establish socket with new coordinator
-close old socket after transition
-```
-
-The browser transcript remains unchanged.
-
----
-
-# 9. WebSocket Architecture
-
-Cloudflare Durable Objects' Hibernation WebSocket API is used.
-
-Cloudflare recommends this API for Durable Object WebSocket servers; connected clients can remain attached while the object's in-memory JavaScript state is discarded during idle periods.
-
-## 9.1 Connection attachment
-
-All state necessary to reconstruct a connection after hibernation is stored in the WebSocket attachment.
-
-Conceptually:
-
-```ts
-type ConnectionAttachment = {
-  version: 1;
-
-  userId: string;
-  author: string;
-
-  location: string;    // H3 r11
-  scope: 9 | 10 | 11;
-  roomTag: string;
-
-  connectedAt: number;
-};
-```
-
-Cloudflare's `serializeAttachment` / `deserializeAttachment` mechanism exists specifically for retaining per-connection metadata across hibernation.
-
-Ordinary in-memory maps may be used as caches but must never be the only source of required connection metadata.
-
----
-
-# 10. WebSocket Protocol
-
-Messages use small JSON frames initially.
-
-Binary encoding is unnecessary for v1.
-
-## 10.1 Client → Server
-
-### Position
-
-```json
-{
-  "type": "position",
-  "location": "8b..."
-}
-```
-
-Server verifies:
-
-- valid H3 index;
-- exactly r11;
-- plausible format.
-
-The server does not verify physical authenticity.
-
-### Scope
-
-```json
-{
-  "type": "scope",
-  "scope": 10
-}
-```
-
-Only:
-
-```text
-9
-10
-11
-```
-
-are accepted.
-
-### Room
-
-```json
-{
-  "type": "room",
-  "tag": "..."
-}
-```
-
-Public:
-
-```json
-{
-  "type": "room",
-  "tag": ""
-}
-```
-
-### Message
-
-```json
-{
-  "type": "message",
-  "id": "...",
-  "body": "anyone here?"
-}
-```
-
-The server must ignore any client-supplied:
-
-- author;
-- timestamp;
-- location;
-- identity.
-
-Those are attached server-side using authenticated connection state.
-
-## 10.2 Server → Client
-
-### Ready
-
-```json
-{
-  "type": "ready",
-  "author": "4f92ac17",
-  "scope": 10,
-  "roomTag": ""
-}
-```
-
-### Message
-
-```json
-{
-  "type": "message",
-  "message": {
-    "id": "...",
-    "ts": 1790950000000,
-    "location": "...",
-    "author": "4f92ac17",
-    "roomTag": "",
-    "body": "hello"
-  }
-}
-```
-
-The frontend does not need to expose the message location.
-
-### Error
-
-```json
-{
-  "type": "error",
-  "code": "RATE_LIMITED"
-}
-```
-
-Errors should use stable machine-readable codes.
-
----
-
-# 11. Message Ingestion
-
-When authenticated client `A` sends text:
-
-```text
-1. Validate body.
-2. Apply rate limit.
-3. Read author from authenticated connection.
-4. Read current r11 location from connection.
-5. Read room tag from connection.
-6. Generate authoritative timestamp.
-7. Create message.
-8. Fan out locally.
-9. Forward to relevant neighboring shards.
-10. ACK sender if desired.
-```
-
-The client cannot choose a different geographic origin for an individual message.
-
-Moving requires a position event first.
-
----
-
-# 12. Local Fanout
-
-For every active connection in the shard:
-
-```ts
-function shouldDeliver(
-  viewer: ConnectionAttachment,
-  message: ChatMessage
-): boolean {
-  if (viewer.roomTag !== message.roomTag)
-    return false;
-
-  const viewerCell =
-    cellToParent(viewer.location, viewer.scope);
-
-  const messageCell =
-    cellToParent(message.location, viewer.scope);
-
-  return gridDisk(viewerCell, 1)
-    .includes(messageCell);
-}
-```
-
-This single predicate is canonical for realtime fanout and future server-side filtering.
-
-There must not be separate definitions of geographic visibility in different subsystems.
-
-For the expected initial scale of hundreds of users per shard, v1 may simply scan connected sockets when delivering a message.
-
-Optimization may be introduced only after measurement.
-
----
-
-# 13. Cross-Shard Fanout
-
-A proximity neighborhood may cross an r5 DO boundary.
-
-This is expected behavior.
-
-The client does not open additional sockets.
-
-Instead, the message's home shard forwards the message to every **candidate shard that could contain an eligible viewer**.
-
-## 13.1 Candidate calculation
-
-For maximum correctness and still-trivial computation:
-
-For each supported scope:
-
-```text
-r9
-r10
-r11
-```
-
-perform:
-
-```ts
-messageAtScope =
-  cellToParent(message.location, scope)
-
-possibleViewerCenters =
-  gridDisk(messageAtScope, 1)
-
-for each center:
-  shard =
-    cellToParent(center, 5)
-
-add shard to Set
-```
-
-Pseudo-code:
-
-```ts
-function candidateShards(messageR11: string) {
-  const shards = new Set<string>();
-
-  for (const scope of [9, 10, 11]) {
-    const cell = cellToParent(messageR11, scope);
-
-    for (const nearby of gridDisk(cell, 1)) {
-      shards.add(cellToParent(nearby, 5));
-    }
-  }
-
-  return shards;
-}
-```
-
-Remove the originating shard from the remote-forward list.
-
-In practice, nearly all messages should require only local delivery; cross-DO forwarding primarily occurs near shard boundaries.
-
-## 13.2 DO-to-DO communication
-
-Cross-shard messages use short-lived Durable Object RPC/fetch calls.
-
-Do **not** maintain outbound DO-to-DO WebSockets.
-
-Cloudflare hibernation applies to server-side accepted sockets, while active outbound WebSockets prevent the originating DO from hibernating.
-
-Remote call:
-
-```text
-origin shard
-    ↓
-targetShard.deliver(message)
-    ↓
-target performs local shouldDeliver()
-```
-
-The target shard delivers the forwarded message only to currently eligible connections.
-
----
-
-# 14. Live-Only Message Delivery
-
-Chat messages are never written to D1 or Durable Object storage.
-
-The originating shard constructs the authoritative message, scans currently connected sockets, applies the canonical visibility predicate, and forwards the message to candidate neighboring shards for the same live-only filtering.
-
-The Durable Object's SQLite storage may hold operational abuse-control state such as per-identity rate-limit buckets, but never message bodies or chat history.
-
----
-
-# 15. Disconnect Semantics
-
-Delivery is best effort and only occurs while a viewer is connected.
-
-On reconnect, the client resumes receiving new messages from its current location, scope, and room. Messages sent during the interruption are permanently missed. The client may render local session markers such as connected, disconnected, and neighborhood changed inside its existing transcript.
-
----
-
-# 16. Client Transcript Behavior
-
-The browser maintains the displayed message list for the life of the page/session.
-
-The following do **not** clear already displayed messages:
-
-- location changes;
-- crossing shard boundaries;
-- changing proximity scope;
-- entering a room;
-- returning to public chat.
-
-These actions only affect subsequent delivery.
-
-This behavior is explicitly experimental and may be changed later without modifying backend semantics.
-
-Messages should be deduplicated by ID.
-
-A bounded client transcript should eventually be introduced to prevent unbounded memory growth, e.g.:
-
-```text
-last 1000–5000 rendered messages
-```
+HTTP API: `GET /api/feed`, `GET /api/threads/:id`, `GET /api/me/engagement`, `POST /api/actions`. Full details, including the protocol types, trending formula, partitioning and capacity reasoning, are in `docs/superpowers/specs/2026-10-05-local-feed-design.md`. A plain-language explanation is served at `/how-it-works.html`.
 
 ---
 
@@ -889,42 +495,18 @@ The WebSocket upgrade validates the authenticated session before routing the soc
 
 # 18. Worker Routing
 
-The outer Worker is responsible for:
+| Route | Purpose |
+|---|---|
+| `/api/auth/*` | Passkey registration, login, session and logout |
+| `GET /api/feed` | A page of the Latest or Trending feed for a scope cell, range and room |
+| `GET /api/threads/:id` | A thread's summary and full reply tree |
+| `GET /api/me/engagement` | The signed-in user's likes and reposts for given threads |
+| `POST /api/actions` | Post, reply, like, unlike, repost, delete |
+| `POST /api/client-error` | Bounded client diagnostics |
+| `GET /api/health` | Health check |
+| everything else | Static assets |
 
-- serving the frontend;
-- WebAuthn API endpoints;
-- session validation;
-- WebSocket upgrade validation;
-- selecting the client's geographic Durable Object.
-
-Initial connection request must include the client's r11 H3 location.
-
-Conceptually:
-
-```text
-GET /api/socket?location=<h3-r11>
-```
-
-Worker:
-
-```ts
-validateSession();
-validateH3R11(location);
-
-const shard =
-  cellToParent(location, 5);
-
-const id =
-  GEO_DO.idFromName(shard);
-
-return GEO_DO
-  .get(id)
-  .fetch(request);
-```
-
-Once connected, ordinary movement inside the same shard is sent through the socket.
-
-Crossing an r5 boundary causes the client to establish a socket routed to the new DO.
+`POST` requests must carry `Origin` equal to the configured origin.
 
 ---
 
@@ -981,22 +563,11 @@ minimal account metadata
 future abuse/account flags
 ```
 
-## Geographic Durable Object SQLite contains
+## Durable Object SQLite contains
 
-```text
-operational abuse-control state
-no chat messages
-```
-
-## WebSocket attachments contain
-
-```text
-authenticated user identity
-current H3 r11 position
-current scope
-current room tag
-connection metadata
-```
+- ThreadStore: one thread's posts, counts, score, participants and where its references live, until the thread expires.
+- CellIndex: references (thread id, anchor cell, time, ordering snapshot, expiry), idempotency records and tombstones for 20 minutes, per-minute load counts.
+- UserState: likes and reposts per user for 24 hours.
 
 ## Browser contains
 

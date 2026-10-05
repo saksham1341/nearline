@@ -200,8 +200,9 @@ body:has(> .gate:not([hidden]))::before { content: ""; }
   border-radius: 16px; background: var(--bg);
   box-shadow: 0 0 0 1px var(--island-line), 0 18px 48px -12px rgba(0, 0, 0, 0.35);
 }
-.gate-brand { margin: 0 -24px 28px; padding: 18px 24px; display: flex; align-items: center; gap: 8px; background: var(--bar); color: var(--bar-ink); font-size: var(--t-20); font-weight: 800; letter-spacing: -0.02em; }
+.gate-brand { margin: 0 -24px 28px; padding: 18px 24px; display: flex; align-items: center; gap: 10px; background: var(--bar); color: var(--bar-ink); font-size: var(--t-20); font-weight: 800; letter-spacing: -0.02em; }
 .gate-brand::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--live); }
+.gate-logo { width: 32px; height: 32px; flex: none; color: var(--bar-ink); }
 .gate h1 { margin-bottom: 12px; font-size: clamp(28px, 8vw, 36px); font-weight: 800; letter-spacing: -0.025em; line-height: 1.05; text-wrap: balance; }
 .gate-copy { max-width: 36ch; margin-bottom: 28px; color: var(--ink-2); font-size: var(--t-16); line-height: 1.5; }
 .gate-actions { display: grid; gap: 12px; }
@@ -226,7 +227,8 @@ body:has(> .gate:not([hidden]))::before { content: ""; }
 :root.room-active .frame { background: var(--private-bar); }
 .appbar-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; }
 .brand { min-width: 0; display: grid; grid-template-columns: auto auto; justify-content: start; align-items: center; column-gap: 8px; }
-.logo { grid-column: 1; width: 28px; height: 28px; color: var(--bar-ink); }
+.brand-logo, .logo { width: 28px; height: 28px; flex: none; }
+.brand-logo { grid-column: 1; color: var(--bar-ink); }
 .wordmark { grid-column: 2; display: flex; align-items: center; gap: 8px; font-size: var(--t-20); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
 .wordmark-line { display: none; }
 
@@ -383,10 +385,12 @@ body.doc { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
   background: var(--bg); animation: slide-in 200ms var(--ease-out) both;
 }
 .thread-header {
-  flex: none; height: 56px; display: flex; align-items: center; gap: 4px; padding: 0 8px 0 4px;
+  flex: none; height: 56px; display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; padding: 0 4px;
   background: var(--bar); color: var(--bar-ink);
 }
-.thread-header .logo { margin: 0 auto; color: var(--bar-ink); }
+.thread-header .logo { grid-column: 1 / -1; grid-row: 1; justify-self: center; color: var(--bar-ink); }
+.thread-header-left { grid-column: 1; grid-row: 1; justify-self: start; }
+.thread-header-right { grid-column: 3; grid-row: 1; justify-self: end; }
 .thread-header .icon-button { width: 40px; height: 40px; }
 :root.room-active .thread-header { background: var(--private-bar); }
 .thread-header .icon-button, .thread-header .text-button { color: var(--bar-ink); }

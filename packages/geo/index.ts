@@ -1,4 +1,5 @@
 import {
+  cellToChildren,
   cellToLatLng,
   cellToParent,
   getResolution,
@@ -86,4 +87,43 @@ export function canonicalLocationCenter(location: string): { latitude: number; l
 
 function assertCanonicalLocation(location: string): void {
   if (!isCanonicalLocation(location)) throw new RangeError("Location must be a valid H3 resolution 11 cell");
+}
+
+/** A cell is a valid scope cell when it sits exactly at the scope's resolution. */
+export function isScopeCell(value: unknown, scope: ProximityScope): value is string {
+  return typeof value === "string" && isValidCell(value) && getResolution(value) === scope;
+}
+
+/** The scope cell plus its one-ring: everything a viewer with this scope cell can see. */
+export function regionCells(scopeCell: string): string[] {
+  return gridDisk(scopeCell, 1);
+}
+
+export interface RefCells {
+  cell9: string;
+  cell10: string;
+  cell11: string;
+}
+
+/** An anchor's cell at each scope resolution, stored on refs so every scope is an indexed lookup. */
+export function refCells(location: string): RefCells {
+  assertCanonicalLocation(location);
+  return { cell9: cellToParent(location, 9), cell10: cellToParent(location, 10), cell11: location };
+}
+
+export function resolutionOf(cell: string): number {
+  return getResolution(cell);
+}
+
+export function parentAt(cell: string, resolution: number): string {
+  return cellToParent(cell, resolution);
+}
+
+export function childrenOf(cell: string): string[] {
+  return cellToChildren(cell, getResolution(cell) + 1);
+}
+
+export function cellCenter(cell: string): { latitude: number; longitude: number } {
+  const [latitude, longitude] = cellToLatLng(cell);
+  return { latitude, longitude };
 }

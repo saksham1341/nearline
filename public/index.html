@@ -52,15 +52,11 @@
             </p>
           </div>
           <details class="identity-menu" data-identity-menu>
-            <summary aria-label="Menu">
-              <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="3" r="1.2"/><circle cx="8" cy="8" r="1.2"/><circle cx="8" cy="13" r="1.2"/></svg>
+            <summary aria-label="Account and settings">
+              <span class="me-avatar" data-author-mark aria-hidden="true"></span>
             </summary>
             <div class="identity-popover">
               <span class="identity-popover-label">Signed in as <span class="identity" data-author-label>@--------</span></span>
-              <button class="room-toggle" data-room-button type="button" aria-haspopup="dialog" aria-controls="room-dialog">
-                <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>
-                <span data-room-button-label>Private feed…</span>
-              </button>
               <div class="theme-switch" role="group" aria-label="Theme">
                 <button type="button" data-theme-choice="system" aria-pressed="true">System</button>
                 <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
@@ -89,6 +85,12 @@
         </section>
 
         <form id="composer" class="composer">
+          <button class="audience-chip" data-room-button type="button" aria-haspopup="dialog" aria-controls="room-dialog">
+            <svg class="icon icon-public" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c2 2 2 10 0 12M8 2c-2 2-2 10 0 12"/></svg>
+            <svg class="icon icon-private" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>
+            <span class="sr-only">Posting to </span><span class="audience-label" data-room-button-label>Public</span>
+            <svg class="icon chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
+          </button>
           <label class="composer-field">
             <span class="sr-only">New post</span>
             <textarea id="message-input" rows="1" maxlength="1000" placeholder="What's happening here?" enterkeyhint="send"></textarea>

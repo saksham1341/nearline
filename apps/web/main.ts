@@ -14,6 +14,7 @@ import { FeedState } from "./feed-state.ts";
 import { LatestOnly } from "./latest-only.ts";
 import { Poller } from "./poller.ts";
 import { refreshTimes, renderFeed } from "./render-feed.ts";
+import { authorStyle } from "./render-post.ts";
 import { renderThread } from "./render-thread.ts";
 
 const elements = {
@@ -59,6 +60,7 @@ const scopeButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("bu
 const tabButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-tab]"));
 const roomButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-room-button]"));
 const authorLabels = Array.from(document.querySelectorAll<HTMLElement>("[data-author-label]"));
+const authorMarks = Array.from(document.querySelectorAll<HTMLElement>("[data-author-mark]"));
 const syncDots = Array.from(document.querySelectorAll<HTMLElement>("[data-sync-dot]"));
 const syncLabels = Array.from(document.querySelectorAll<HTMLElement>("[data-sync-label]"));
 const logoutButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-logout]"));
@@ -277,6 +279,10 @@ function endSession(): void {
 function setAuthor(author: string): void {
   currentAuthor = author;
   for (const label of authorLabels) label.textContent = author ? `@${author}` : "@--------";
+  for (const mark of authorMarks) {
+    mark.textContent = author ? author.slice(0, 2) : "";
+    if (author) mark.dataset.paper = String(authorStyle(author).paper);
+  }
 }
 
 // ---------- Location ----------
@@ -799,10 +805,9 @@ async function enterRoom(): Promise<void> {
   joined.set(roomBytes, 0);
   joined.set(passphraseBytes, roomBytes.length + 1);
   currentRoomTag = bytesToHex(await sha256(joined));
-  setRoomButtonLabel("Private feed settings");
+  setRoomButtonLabel(roomId);
   for (const button of roomButtons) button.classList.add("active");
   document.documentElement.classList.add("room-active");
-  elements.input.placeholder = "Post to this filter…";
   elements.leaveRoom.hidden = false;
   elements.roomForm.reset();
   elements.roomDialog.close();
@@ -812,10 +817,9 @@ async function enterRoom(): Promise<void> {
 
 function leaveRoom(): void {
   currentRoomTag = "";
-  setRoomButtonLabel("Private feed…");
+  setRoomButtonLabel("Public");
   for (const button of roomButtons) button.classList.remove("active");
   document.documentElement.classList.remove("room-active");
-  elements.input.placeholder = "Post nearby…";
   elements.leaveRoom.hidden = true;
   elements.roomDialog.close();
   applyScopeVisuals();

@@ -250,7 +250,13 @@ body:has(> .gate:not([hidden]))::before { content: ""; }
 
 .identity-menu { position: relative; }
 .identity-menu summary { width: 44px; height: 44px; display: grid; place-items: center; border-radius: var(--pill); list-style: none; cursor: pointer; color: var(--bar-ink); }
-.identity-menu summary .icon { width: 20px; height: 20px; fill: currentColor; stroke: none; }
+/* Your own avatar opens the account menu. */
+.me-avatar {
+  width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%;
+  background: var(--pin, var(--pin-7)); color: #ffffff; font-size: var(--t-12); font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase;
+  box-shadow: 0 0 0 2px var(--bar), 0 0 0 3.5px color-mix(in srgb, var(--bar-ink) 35%, transparent);
+}
+:root.room-active .me-avatar { box-shadow: 0 0 0 2px var(--private-bar), 0 0 0 3.5px color-mix(in srgb, var(--bar-ink) 35%, transparent); }
 .identity-menu summary::-webkit-details-marker { display: none; }
 .identity-popover {
   position: absolute; z-index: 20; top: calc(100% + 4px); right: 4px; width: 248px; padding: 8px;
@@ -260,7 +266,6 @@ body:has(> .gate:not([hidden]))::before { content: ""; }
 .identity-popover-label { display: block; padding: 8px 12px; color: var(--ink-2); font-size: var(--t-12); }
 .identity { color: var(--ink); font-weight: 700; }
 .identity-popover button, .popover-link { width: 100%; min-height: 44px; padding: 0 12px; display: flex; align-items: center; gap: 12px; border: 0; border-radius: 10px; background: transparent; color: var(--ink); font-size: var(--t-16); font-weight: 500; text-align: left; text-decoration: none; }
-.identity-popover .room-toggle.active { color: var(--private); font-weight: 700; }
 .theme-switch { margin: 4px 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: var(--pill); background: var(--surface); }
 .identity-popover .theme-switch button { width: auto; min-height: 32px; padding: 0 8px; justify-content: center; border-radius: var(--pill); color: var(--ink-2); font-size: var(--t-14); font-weight: 700; }
 .identity-popover .theme-switch button[aria-pressed="true"] { background: var(--bg); color: var(--ink); box-shadow: 0 1px 3px rgba(15, 20, 25, 0.16); }
@@ -401,6 +406,21 @@ body.doc { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
   position: absolute; z-index: 4; left: 8px; right: 8px; bottom: max(8px, calc(env(safe-area-inset-bottom, 0px) + 4px));
   display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px;
 }
+#composer { grid-template-columns: auto minmax(0, 1fr) auto; }
+/* Audience: who this post goes to. Public, or the private feed you're in. */
+.audience-chip {
+  min-width: 0; max-width: 132px; min-height: 48px; padding: 0 10px 0 12px; display: inline-flex; align-items: center; gap: 6px;
+  border: 0; border-radius: var(--pill); background: var(--surface); color: var(--ink);
+  box-shadow: var(--bubble-shadow), 0 0 0 1px var(--line);
+  font-size: var(--t-14); font-weight: 700;
+  transition: background-color var(--fast) var(--ease-out), color var(--fast) var(--ease-out);
+}
+.audience-chip .icon { width: 16px; height: 16px; }
+.audience-chip .chevron { width: 14px; height: 14px; opacity: 0.7; }
+.audience-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.audience-chip .icon-private, .audience-chip.active .icon-public { display: none; }
+.audience-chip.active .icon-private { display: block; }
+.audience-chip.active { background: var(--private); color: #ffffff; box-shadow: var(--bubble-shadow); }
 .composer-field { display: block; border-radius: 24px; background: var(--surface); box-shadow: var(--bubble-shadow), 0 0 0 1px var(--line); }
 textarea {
   display: block; width: 100%; min-height: 48px; max-height: 140px; resize: none;
@@ -472,6 +492,7 @@ textarea:focus, textarea:focus-visible { outline: none; box-shadow: none; }
   .button.primary:hover { opacity: 0.88; }
   .button.secondary:hover, .icon-button:hover, .text-button:hover { background: var(--surface); }
   .frame .icon-button:hover, .thread-header .icon-button:hover, .thread-header .text-button:hover, .identity-menu summary:hover, .scope-button:hover { background: rgba(255, 255, 255, 0.1); }
+  .audience-chip:not(.active):hover { background: var(--surface-2); }
   .identity-popover button:hover, .popover-link:hover, .range-control button:not([aria-pressed="true"]):hover { background: var(--surface); }
   .feed-tabs button:hover { color: var(--bar-ink); }
   .post-feed:hover { background: var(--surface); }
@@ -493,6 +514,11 @@ textarea:focus, textarea:focus-visible { outline: none; box-shadow: none; }
 @media (max-width: 370px) {
   .post-actions { gap: 8px; }
 }
+/* Narrow phones: the audience chip keeps its icon (globe or lock, green when private) and gives the text box the room. */
+@media (max-width: 479px) {
+  .audience-chip { padding: 0 8px 0 14px; }
+  .audience-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+}
 
 /* ---------- Wider screens: the app sits as a column on the canvas ---------- */
 @media (min-width: 720px) {
@@ -501,6 +527,7 @@ textarea:focus, textarea:focus-visible { outline: none; box-shadow: none; }
   .app { z-index: 1; }
   .app { height: calc(var(--viewport-height) - 40px); margin-top: 20px; border-radius: 12px; box-shadow: 0 0 0 1px var(--island-line), 0 18px 48px -12px rgba(0, 0, 0, 0.35); --appbar-top: 64px; }
   .frame { padding-top: 8px; }
+  .audience-chip { max-width: 220px; }
   body.doc .doc-shell { min-height: 0; margin: 20px auto; border-radius: 12px; overflow: clip; box-shadow: 0 0 0 1px var(--island-line), 0 18px 48px -12px rgba(0, 0, 0, 0.35); }
 }
 

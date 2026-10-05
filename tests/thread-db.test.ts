@@ -182,4 +182,62 @@ describe("thread store", () => {
     db.ackEvents(db.pendingEvents(100).map((event) => event.eventId));
     expect(db.isGone()).toBe(true);
   });
+
+  describe("branch expiry", () => {
+    const later = (minutes: number) => T + minutes * 60_000;
+    const postIdOf = (result: ReturnType<ThreadDb["reply"]>) => (result.outcome.ok ? result.outcome.post.id : "");
+    const liveIds = (db: ThreadDb, now: number) => {
+      const tree = db.thread(now);
+      return tree.ok ? tree.posts.map((post) => post.id) : [];
+    };
+
+    it("prunes a quiet branch while an active sibling stays", () => {
+      const { db } = fresh();
+      const quiet = postIdOf(reply(db, alice));
+      const busy = postIdOf(reply(db, bob));
+      const deep = postIdOf(db.reply({ postId: uuidv7(later(10)), parentId: busy, actor: alice, body: "still here", now: later(10) }));
+      const now = later(16);
+      expect(liveIds(db, now).sort()).toEqual([threadId, busy, deep].sort());
+      expect(liveIds(db, now)).not.toContain(quiet);
+      expect(summaryOf(db, now).replyCount).toBe(2);
+    });
+
+    it("keeps a branch alive when one of its posts is liked", () => {
+      const { db } = fresh();
+      const liked = postIdOf(reply(db, alice));
+      const ignored = postIdOf(reply(db, bob));
+      db.applyLikes([like(liked, bob.userId, 1, true, later(10))], later(10));
+      const ids = liveIds(db, later(16));
+      expect(ids).toContain(liked);
+      expect(ids).not.toContain(ignored);
+    });
+
+    it("keeps every ancestor of an active post", () => {
+      const { db } = fresh();
+      const a = postIdOf(reply(db, alice));
+      const a1 = postIdOf(db.reply({ postId: uuidv7(T + 1), parentId: a, actor: bob, body: "a1", now: T + 1 }));
+      const a2 = postIdOf(db.reply({ postId: uuidv7(T + 2), parentId: a1, actor: alice, body: "a2", now: T + 2 }));
+      db.reply({ postId: uuidv7(later(10)), parentId: a2, actor: bob, body: "a3", now: later(10) });
+      expect(liveIds(db, later(16))).toEqual(expect.arrayContaining([threadId, a, a1, a2]));
+    });
+
+    it("refuses replies to a faded branch", () => {
+      const { db } = fresh();
+      const quiet = postIdOf(reply(db, alice));
+      reply(db, bob, threadId, later(10));
+      expect(db.reply({ postId: uuidv7(later(16)), parentId: quiet, actor: bob, body: "late", now: later(16) }).outcome)
+        .toEqual({ ok: false, code: "PARENT_NOT_FOUND" });
+    });
+
+    it("gives every post its own expiry and wakes at the earliest one", () => {
+      const { db } = fresh();
+      const first = postIdOf(reply(db, alice));
+      reply(db, bob, threadId, later(5));
+      const tree = db.thread(later(5));
+      const view = tree.ok ? tree.posts.find((post) => post.id === first) : undefined;
+      expect(view?.expiresAt).toBe(T + THREAD_TTL_MS);
+      expect(db.nextExpiry()).toBe(T + THREAD_TTL_MS);
+      expect(summaryOf(db, later(5)).expiresAt).toBe(later(5) + THREAD_TTL_MS);
+    });
+  });
 });

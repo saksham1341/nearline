@@ -1,5 +1,5 @@
 import { addEngagement, replyEngagement } from "../../../packages/feed/score.ts";
-import { deletionOutcome, type DeletionOutcome } from "../../../packages/feed/tree.ts";
+import { branchExpiries, deletionOutcome, type DeletionOutcome } from "../../../packages/feed/tree.ts";
 import type { ErrorCode, PostView, ThreadSummary } from "../../../packages/protocol/index.ts";
 import {
   EVENT_RETENTION_MS,
@@ -80,6 +80,7 @@ interface PostRow {
   created_at: number;
   deleted: number;
   like_count: number;
+  active_at: number;
 }
 
 const SCHEMA = [
@@ -107,7 +108,9 @@ const SCHEMA = [
     body TEXT NOT NULL,
     created_at INTEGER NOT NULL,
     deleted INTEGER NOT NULL DEFAULT 0,
-    like_count INTEGER NOT NULL DEFAULT 0
+    like_count INTEGER NOT NULL DEFAULT 0,
+    -- This post's own last activity. Branch expiry is derived from these (see branchExpiries).
+    active_at INTEGER NOT NULL
   )`,
   "CREATE TABLE IF NOT EXISTS participants (user_id TEXT PRIMARY KEY)",
   "CREATE TABLE IF NOT EXISTS repliers (user_id TEXT PRIMARY KEY)",
@@ -149,8 +152,8 @@ export class ThreadDb {
       id, roomTag, actor.author, actor.userId, location, now, now, now + THREAD_TTL_MS, now,
     );
     this.sql.exec(
-      "INSERT INTO posts (id, parent_id, author, author_user_id, body, created_at) VALUES (?, NULL, ?, ?, ?, ?)",
-      id, actor.author, actor.userId, body, now,
+      "INSERT INTO posts (id, parent_id, author, author_user_id, body, created_at, active_at) VALUES (?, NULL, ?, ?, ?, ?, ?)",
+      id, actor.author, actor.userId, body, now, now,
     );
     this.sql.exec("INSERT INTO participants (user_id) VALUES (?)", actor.userId);
     const summary = this.requireSummary();
@@ -160,8 +163,10 @@ export class ThreadDb {
 
   reply(input: ReplyInput): Result<{ post: PostView; summary: ThreadSummary }> {
     if (!this.hasSchema()) return { outcome: fail("THREAD_NOT_FOUND"), events: [] };
+    this.pruneBranches(input.now);
     const live = this.live(input.now);
     if (!live.ok) return { outcome: live, events: [] };
+    // A faded branch is gone even if the alarm has not pruned it yet.
     if (!this.post(input.parentId)) return { outcome: fail("PARENT_NOT_FOUND"), events: [] };
     if (this.count("SELECT COUNT(*) AS n FROM posts") >= MAX_POSTS_PER_THREAD) {
       return { outcome: fail("THREAD_FULL"), events: [] };
@@ -170,8 +175,8 @@ export class ThreadDb {
     const isAuthor = actor.userId === live.row.author_user_id;
     const othersHaveReplied = this.count("SELECT COUNT(*) AS n FROM repliers") > 0;
     this.sql.exec(
-      "INSERT INTO posts (id, parent_id, author, author_user_id, body, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-      input.postId, input.parentId, actor.author, actor.userId, input.body, now,
+      "INSERT INTO posts (id, parent_id, author, author_user_id, body, created_at, active_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      input.postId, input.parentId, actor.author, actor.userId, input.body, now, now,
     );
     this.sql.exec("UPDATE thread SET reply_count = reply_count + 1");
     if (!isAuthor) this.sql.exec("INSERT INTO repliers (user_id) VALUES (?) ON CONFLICT DO NOTHING", actor.userId);
@@ -190,6 +195,7 @@ export class ThreadDb {
 
   remove(input: RemoveInput): Result<{ outcome: DeletionOutcome }> {
     if (!this.hasSchema()) return { outcome: fail("THREAD_NOT_FOUND"), events: [] };
+    this.pruneBranches(input.now);
     const row = this.row();
     if (!row) return { outcome: fail("THREAD_NOT_FOUND"), events: [] };
     if (row.expires_at <= input.now) return { outcome: fail("THREAD_EXPIRED"), events: [] };
@@ -215,6 +221,7 @@ export class ThreadDb {
 
   applyLikes(events: readonly ThreadLikedEvent[], now: number): CellEvent[] {
     if (!this.hasSchema()) return [];
+    this.pruneBranches(now);
     const row = this.row();
     if (!row || row.expires_at <= now) return [];
     let changed = false;
@@ -228,6 +235,7 @@ export class ThreadDb {
       changed = true;
       if (event.delta > 0) {
         this.engage(event.userId, event.first ? "like" : null, event.at);
+        this.touchPost(event.postId, event.at);
         lastActivity = Math.max(lastActivity ?? 0, event.at);
       }
     }
@@ -246,6 +254,7 @@ export class ThreadDb {
       if (!this.markApplied(event.eventId, now)) continue;
       this.sql.exec("UPDATE thread SET repost_count = repost_count + 1");
       this.engage(event.userId, event.first ? "repost" : null, event.at);
+      this.touchPost(row.id, event.at);
       this.touch(event.at);
       anchors.push({
         partition: event.partition,
@@ -261,21 +270,53 @@ export class ThreadDb {
 
   summary(now: number): Outcome<{ summary: ThreadSummary }> {
     if (!this.hasSchema()) return fail("THREAD_NOT_FOUND");
+    this.pruneBranches(now);
     const live = this.live(now);
     return live.ok ? { ok: true, summary: this.summaryOf(live.row) } : live;
   }
 
   thread(now: number): Outcome<{ summary: ThreadSummary; posts: PostView[] }> {
     if (!this.hasSchema()) return fail("THREAD_NOT_FOUND");
+    this.pruneBranches(now);
     const live = this.live(now);
     if (!live.ok) return live;
     const rows = this.sql.exec<PostRow>("SELECT * FROM posts ORDER BY created_at, id").toArray();
-    return { ok: true, summary: this.summaryOf(live.row), posts: rows.map((row) => this.postView(row, live.row.id)) };
+    const expiries = this.branchExpiryMap();
+    return {
+      ok: true,
+      summary: this.summaryOf(live.row),
+      posts: rows.map((row) => this.postView(row, live.row.id, expiries.get(row.id))),
+    };
   }
 
   expiresAt(): number | null {
     if (!this.hasSchema()) return null;
     return this.row()?.expires_at ?? null;
+  }
+
+  /** The earliest moment anything here fades: a branch, or the whole thread. */
+  nextExpiry(): number | null {
+    if (!this.hasSchema() || !this.row()) return null;
+    const expiries = [...this.branchExpiryMap().values()];
+    return expiries.length > 0 ? Math.min(...expiries) : this.expiresAt();
+  }
+
+  /**
+   * Deletes every reply whose branch went quiet. A post never outlives its parent (the parent's
+   * subtree contains it), so the deleted set is always made of whole subtrees. The root follows the
+   * thread's own expiry. Pruning is not activity and changes nothing the cell indexes order by.
+   */
+  pruneBranches(now: number): number {
+    if (!this.hasSchema() || !this.row()) return 0;
+    const rootId = this.row()!.id;
+    const faded = [...this.branchExpiryMap()].filter(([id, expiresAt]) => id !== rootId && expiresAt <= now).map(([id]) => id);
+    for (const id of faded) this.sql.exec("DELETE FROM posts WHERE id = ?", id);
+    const removed = faded.length;
+    if (removed > 0) {
+      this.sql.exec("UPDATE thread SET reply_count = MAX(0, reply_count - ?)", removed);
+      this.bump();
+    }
+    return removed;
   }
 
   /** Returns the expiry events and empties the store when the thread is due; null otherwise. */
@@ -355,6 +396,18 @@ export class ThreadDb {
       "UPDATE thread SET last_activity_at = MAX(last_activity_at, ?), expires_at = MAX(expires_at, ?)",
       at, at + THREAD_TTL_MS,
     );
+  }
+
+  /** Records activity on one post. Its ancestors' expiries follow from it when derived. */
+  private touchPost(postId: string, at: number): void {
+    this.sql.exec("UPDATE posts SET active_at = MAX(active_at, ?) WHERE id = ?", at, postId);
+  }
+
+  private branchExpiryMap(): Map<string, number> {
+    const nodes = this.sql.exec<{ id: string; parent_id: string | null; active_at: number }>(
+      "SELECT id, parent_id, active_at FROM posts",
+    ).toArray().map((row) => ({ id: row.id, parentId: row.parent_id, activeAt: Number(row.active_at) }));
+    return branchExpiries(nodes, THREAD_TTL_MS);
   }
 
   private bump(): void {
@@ -437,7 +490,7 @@ export class ThreadDb {
     };
   }
 
-  private postView(row: PostRow, threadId: string): PostView {
+  private postView(row: PostRow, threadId: string, expiresAt?: number): PostView {
     return {
       id: row.id,
       threadId,
@@ -447,6 +500,7 @@ export class ThreadDb {
       createdAt: row.created_at,
       deleted: row.deleted === 1,
       likeCount: Math.max(0, row.like_count),
+      expiresAt: expiresAt ?? this.branchExpiryMap().get(row.id) ?? Number(row.active_at) + THREAD_TTL_MS,
     };
   }
 }

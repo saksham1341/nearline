@@ -60,7 +60,9 @@ export class ThreadStore extends DurableObject<Env> implements ThreadStoreApi {
   }
 
   async alarm(): Promise<void> {
-    this.db.expireIfDue(Date.now());
+    const now = Date.now();
+    this.db.pruneBranches(now);
+    this.db.expireIfDue(now);
     await this.settle();
   }
 
@@ -72,7 +74,8 @@ export class ThreadStore extends DurableObject<Env> implements ThreadStoreApi {
       this.db = new ThreadDb(durableSql(this.ctx.storage.sql));
       return;
     }
-    const next = sent ? this.db.expiresAt() : Date.now() + OUTBOX_RETRY_MS;
+    // Wake at the earliest branch expiry, which is also when the whole thread would fade.
+    const next = sent ? this.db.nextExpiry() : Date.now() + OUTBOX_RETRY_MS;
     if (next !== null) await this.ctx.storage.setAlarm(next);
   }
 }

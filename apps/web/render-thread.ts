@@ -24,6 +24,13 @@ export function renderThread(container: HTMLElement, state: FeedState, currentAu
     container.append(banner);
   }
 
+  if (open.branchFaded && !open.faded) {
+    const banner = document.createElement("p");
+    banner.className = "thread-faded";
+    banner.textContent = "The branch you were reading faded. This is the nearest part still active.";
+    container.append(banner);
+  }
+
   if (!open.loaded) {
     if (open.summary) container.append(card(open.summary.root, "focus", ctx));
     const loading = document.createElement("p");
@@ -104,7 +111,8 @@ function card(post: PostView, variant: "focus" | "reply", ctx: ThreadRenderConte
     replyCount: variant === "focus" ? (isRoot ? summary?.replyCount : descendants) : undefined,
     repostCount: variant === "focus" && isRoot && summary ? state.repostCount(threadId, summary.repostCount, now) : undefined,
     repostedByMe: state.repostedThreads.has(threadId),
-    expiresAt: variant === "focus" && isRoot ? summary?.expiresAt : undefined,
+    // Every post shows its own branch's remaining life; the root's is the thread's.
+    expiresAt: isRoot ? summary?.expiresAt ?? post.expiresAt : post.expiresAt,
     pending: state.pendingReplies.has(post.id),
   });
 }

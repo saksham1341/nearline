@@ -38,6 +38,7 @@ Unchanged: passkey registration and login, anonymous 8-hex author labels, browse
 - **Partition:** the H3 cell a cell index Durable Object is responsible for. Resolution 5 to 9, chosen per area (section 6).
 - **Activity:** a new reply, a like, or a repost. Creating the thread also counts. Unlikes, deletes and reads do not count.
 - **Expiry:** `lastActivityAt + 15 minutes`.
+- **Branch expiry** (added 2026-10-05): every post is the root of its own branch. A post fades 15 minutes after the latest activity anywhere in its subtree, where a post's own activity is its creation and any like on it, and a repost counts as activity on the root. Quiet branches are pruned while active ones stay. Each post stores only its own last activity; branch expiries are derived from the tree on demand (at most 500 posts), so no stored value can go stale. The root's branch is the whole thread, so the thread's expiry, feeds and cell indexes are unchanged. Replies to a faded branch fail with `PARENT_NOT_FOUND`.
 
 ## 3. Visibility
 

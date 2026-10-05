@@ -70,3 +70,42 @@ export function deletionOutcome(
 function compareIds(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
+
+export interface ActivityNode {
+  id: string;
+  parentId: string | null;
+  /** This post's own last activity: when it was posted or last liked. */
+  activeAt: number;
+}
+
+/**
+ * A branch fades `ttl` after the latest activity anywhere inside it, so a post's expiry is the
+ * maximum own-activity over its subtree plus `ttl`. Derived on demand rather than stored, so it
+ * can never go stale. Iterative, so chains of any depth are fine. A post whose parent is missing
+ * is treated as the top of its own branch.
+ */
+export function branchExpiries(nodes: readonly ActivityNode[], ttl: number): Map<string, number> {
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const children = new Map<string, string[]>();
+  const tops: string[] = [];
+  for (const node of nodes) {
+    if (node.parentId !== null && byId.has(node.parentId)) {
+      const list = children.get(node.parentId);
+      if (list) list.push(node.id);
+      else children.set(node.parentId, [node.id]);
+    } else {
+      tops.push(node.id);
+    }
+  }
+  // Breadth-first from the tops, then fold upwards in reverse so children finish before parents.
+  const order: string[] = [...tops];
+  for (let i = 0; i < order.length; i += 1) order.push(...(children.get(order[i]!) ?? []));
+  const latest = new Map(nodes.map((node) => [node.id, node.activeAt]));
+  for (let i = order.length - 1; i >= 0; i -= 1) {
+    const node = byId.get(order[i]!)!;
+    if (node.parentId !== null && latest.has(node.parentId)) {
+      latest.set(node.parentId, Math.max(latest.get(node.parentId)!, latest.get(node.id)!));
+    }
+  }
+  return new Map([...latest].map(([id, at]) => [id, at + ttl]));
+}

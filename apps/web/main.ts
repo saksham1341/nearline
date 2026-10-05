@@ -71,7 +71,7 @@ const ERROR_COPY: Partial<Record<ErrorCode, string>> = {
   THREAD_NOT_FOUND: "That thread has faded.",
   THREAD_EXPIRED: "That thread has faded.",
   NOT_VISIBLE: "That thread is out of your range now.",
-  PARENT_NOT_FOUND: "That post is gone.",
+  PARENT_NOT_FOUND: "That branch has faded.",
   POST_NOT_FOUND: "That post is gone.",
   THREAD_FULL: "This thread is full.",
   ALREADY_REPOSTED: "You already reposted this.",
@@ -454,8 +454,9 @@ async function submitReply(): Promise<void> {
   if (!open || open.faded || !canSubmit(body)) return;
   const parentId = replyParentId ?? open.focusId ?? open.id;
   const id = crypto.randomUUID();
+  const createdAt = state.now();
   state.addPendingReply({
-    id, threadId: open.id, parentId, author: currentAuthor, body, createdAt: state.now(), deleted: false, likeCount: 0,
+    id, threadId: open.id, parentId, author: currentAuthor, body, createdAt, deleted: false, likeCount: 0, expiresAt: createdAt + THREAD_TTL_MS,
   });
   elements.replyInput.value = "";
   setReplyTarget(null);
@@ -536,7 +537,9 @@ function handleActionError(code: ErrorCode): void {
 }
 
 function pendingSummary(id: string, body: string, now: number): ThreadSummary {
-  const root: PostView = { id, threadId: id, parentId: null, author: currentAuthor, body, createdAt: now, deleted: false, likeCount: 0 };
+  const root: PostView = {
+    id, threadId: id, parentId: null, author: currentAuthor, body, createdAt: now, deleted: false, likeCount: 0, expiresAt: now + THREAD_TTL_MS,
+  };
   return {
     id, roomTag: currentRoomTag, root, replyCount: 0, likeCount: 0, repostCount: 0, participantCount: 1,
     score: 0, scoreAt: now, lastActivityAt: now, expiresAt: now + THREAD_TTL_MS, version: 0,

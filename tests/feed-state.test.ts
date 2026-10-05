@@ -6,7 +6,7 @@ const id = (n: number) => `00000000-0000-7000-8000-${String(n).padStart(12, "0")
 const via = (createdAt: number, kind: Anchor["kind"] = "root"): Anchor => ({ cell11: "8b195da49b48fff", kind, byAuthor: "aaaa0001", createdAt });
 
 function summary(n: number, extra: Partial<ThreadSummary> = {}): ThreadSummary {
-  const root: PostView = { id: id(n), threadId: id(n), parentId: null, author: "aaaa0001", body: `post ${n}`, createdAt: n, deleted: false, likeCount: 0 };
+  const root: PostView = { id: id(n), threadId: id(n), parentId: null, author: "aaaa0001", body: `post ${n}`, createdAt: n, deleted: false, likeCount: 0, expiresAt: 1_000_000 };
   return {
     id: id(n), roomTag: "", root, replyCount: 0, likeCount: 0, repostCount: 0, participantCount: 1,
     score: 0, scoreAt: 0, lastActivityAt: n, expiresAt: 1_000_000, version: 1, ...extra,
@@ -110,5 +110,33 @@ describe("client feed state", () => {
     state.applyEngagement({ liked: [id(1)], reposted: [id(2)] });
     expect(state.likedPosts.has(id(1))).toBe(true);
     expect(state.repostedThreads.has(id(2))).toBe(true);
+  });
+
+  describe("faded branches", () => {
+    const reply = (n: number, parentId: string, expiresAt: number): PostView => ({
+      id: id(n), threadId: id(1), parentId, author: "bbbb0002", body: `r${n}`, createdAt: n, deleted: false, likeCount: 0, expiresAt,
+    });
+
+    it("moves the view to the nearest surviving parent when the server drops the focused branch", () => {
+      const state = new FeedState();
+      state.beginOpen(id(1));
+      const before = [summary(1).root, reply(2, id(1), 900_000), reply(3, id(2), 500_000), reply(4, id(3), 500_000)];
+      state.applyTree({ version: 1, serverTime: 0, summary: summary(1), posts: before }, null);
+      state.focus(id(4));
+      state.applyTree({ version: 2, serverTime: 0, summary: summary(1), posts: before.slice(0, 2) }, null);
+      expect(state.open!.focusId).toBe(id(2));
+      expect(state.open!.branchFaded).toBe(true);
+    });
+
+    it("fades replies on the server's clock and keeps the root until the thread expires", () => {
+      const state = new FeedState();
+      state.beginOpen(id(1));
+      state.applyTree({ version: 1, serverTime: 0, summary: summary(1), posts: [summary(1).root, reply(2, id(1), 600_000), reply(3, id(1), 900_000)] }, null);
+      state.focus(id(2));
+      state.prune(700_000);
+      expect(state.open!.posts.map((post) => post.id)).toEqual([id(1), id(3)]);
+      expect(state.open!.focusId).toBeNull();
+      expect(state.open!.branchFaded).toBe(true);
+    });
   });
 });

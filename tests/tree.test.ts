@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { ancestry, buildTree, countDescendants, deletionOutcome, findNode } from "../packages/feed/tree.ts";
+import { ancestry, branchExpiries, buildTree, countDescendants, deletionOutcome, findNode } from "../packages/feed/tree.ts";
 import type { PostView } from "../packages/protocol/index.ts";
 
 function post(id: string, parentId: string | null, createdAt: number): PostView {
-  return { id, threadId: "root", parentId, author: "abcd1234", body: id, createdAt, deleted: false, likeCount: 0 };
+  return { id, threadId: "root", parentId, author: "abcd1234", body: id, createdAt, deleted: false, likeCount: 0, expiresAt: 0 };
 }
 
 const posts = [
@@ -42,5 +42,26 @@ describe("reply tree", () => {
     expect(deletionOutcome(posts, "root")).toBe("placeholder");
     expect(deletionOutcome([post("root", null, 0)], "root")).toBe("remove_thread");
     expect(deletionOutcome(posts, "missing")).toBeNull();
+  });
+
+  it("derives each branch's expiry from the latest activity anywhere beneath it", () => {
+    const nodes = [
+      { id: "root", parentId: null, activeAt: 0 },
+      { id: "a", parentId: "root", activeAt: 1 },
+      { id: "a1", parentId: "a", activeAt: 5 },
+      { id: "b", parentId: "root", activeAt: 2 },
+      { id: "orphan", parentId: "missing", activeAt: 9 },
+    ];
+    const expiries = branchExpiries(nodes, 100);
+    expect(expiries.get("a1")).toBe(105);
+    expect(expiries.get("a")).toBe(105);
+    expect(expiries.get("b")).toBe(102);
+    expect(expiries.get("root")).toBe(105);
+    expect(expiries.get("orphan")).toBe(109);
+  });
+
+  it("derives expiries for chains deeper than the call stack would allow", () => {
+    const chain = Array.from({ length: 20_000 }, (_, i) => ({ id: `p${i}`, parentId: i === 0 ? null : `p${i - 1}`, activeAt: i }));
+    expect(branchExpiries(chain, 10).get("p0")).toBe(19_999 + 10);
   });
 });

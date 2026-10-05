@@ -1,5 +1,5 @@
 import { decayedScore } from "../../packages/feed/score.ts";
-import { deletionOutcome } from "../../packages/feed/tree.ts";
+import { ancestry, deletionOutcome } from "../../packages/feed/tree.ts";
 import type {
   Anchor,
   EngagementResponse,
@@ -25,6 +25,8 @@ export interface OpenThread {
   loaded: boolean;
   focusId: string | null;
   faded: boolean;
+  /** The branch being viewed faded and the view moved to its nearest surviving parent. */
+  branchFaded: boolean;
 }
 
 interface CountOverride {
@@ -148,7 +150,25 @@ export class FeedState {
       .map((entry) => entry.summary.id);
     for (const id of expired) this.remove(id);
     if (this.open?.summary && this.open.summary.expiresAt <= now) this.open.faded = true;
+    const open = this.open;
+    if (open && !open.faded) {
+      // Replies fade by branch on the server's clock; the root lives as long as the thread.
+      const previous = open.posts;
+      open.posts = previous.filter((post) => post.parentId === null || this.pendingReplies.has(post.id) || post.expiresAt > now);
+      this.refocus(previous);
+    }
     return expired;
+  }
+
+  /** If the focused branch is gone, focus its nearest surviving ancestor and say so. */
+  private refocus(previous: readonly PostView[]): void {
+    const open = this.open;
+    if (!open?.focusId || open.posts.some((post) => post.id === open.focusId)) return;
+    const surviving = new Set(open.posts.map((post) => post.id));
+    const chain = ancestry(previous, open.focusId).slice(0, -1).reverse();
+    const nearest = chain.find((id) => surviving.has(id) && id !== open.id) ?? null;
+    open.focusId = nearest;
+    open.branchFaded = true;
   }
 
   resortTrending(now: number): void {
@@ -190,6 +210,7 @@ export class FeedState {
       loaded: false,
       focusId: null,
       faded: false,
+      branchFaded: false,
     };
   }
 
@@ -198,7 +219,9 @@ export class FeedState {
     if (!open || open.id !== response.summary.id) return;
     const known = new Set(response.posts.map((post) => post.id));
     const pending = open.posts.filter((post) => this.pendingReplies.has(post.id) && !known.has(post.id));
+    const previous = open.posts;
     open.posts = [...response.posts, ...pending];
+    this.refocus(previous);
     open.summary = response.summary;
     open.etag = etag;
     open.loaded = true;
@@ -216,7 +239,9 @@ export class FeedState {
   }
 
   focus(postId: string | null): void {
-    if (this.open) this.open.focusId = postId;
+    if (!this.open) return;
+    this.open.focusId = postId;
+    this.open.branchFaded = false;
   }
 
   addPendingReply(post: PostView): void {

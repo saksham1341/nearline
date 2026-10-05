@@ -34,6 +34,8 @@ export interface PostView {
   createdAt: number;
   deleted: boolean;
   likeCount: number;
+  /** 15 minutes after the last activity in this post's subtree; the branch fades then. */
+  expiresAt: number;
 }
 
 export type FeedTab = "latest" | "trending";

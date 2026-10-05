@@ -236,17 +236,18 @@ body:has(> .gate:not([hidden]))::before { content: ""; }
 :root:not(.live) .status-label { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
 .status-dot, .frame-note { display: none; }
 
-/* The range is a setting, so it shows as its current value; tapping opens the sheet. */
+/* The range selector is a dropdown button showing the current value. */
 .scope-button {
-  grid-column: 1 / -1; justify-self: start; margin: 0 0 0 -6px; min-height: 28px; padding: 0 6px;
-  display: inline-flex; align-items: center; gap: 4px;
-  border: 0; border-radius: 8px; background: transparent; color: var(--bar-muted);
-  font-size: var(--t-14); font-weight: 600;
+  min-height: 36px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px;
+  border: 0; border-radius: var(--pill); background: color-mix(in srgb, var(--bar-ink) 14%, transparent);
+  color: var(--bar-ink); font-size: var(--t-14); font-weight: 700; line-height: 1;
+  transition: background-color var(--fast) var(--ease-out);
 }
-.scope-button .icon { width: 14px; height: 14px; }
+.scope-button:hover { background: color-mix(in srgb, var(--bar-ink) 22%, transparent); }
+.scope-button .icon { width: 14px; height: 14px; opacity: 0.7; }
 .scope-private { display: none; }
-:root.room-active .scope-private { display: inline; color: var(--bar-ink); font-weight: 700; }
-:root.room-active .scope-private::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 2px; background: currentColor; vertical-align: 1px; }
+:root.room-active .scope-private { display: inline; font-weight: 700; }
+:root.room-active .scope-private::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 2px; background: currentColor; vertical-align: 1px; }
 
 .identity-menu { position: relative; }
 .identity-menu summary { width: 44px; height: 44px; display: grid; place-items: center; border-radius: var(--pill); list-style: none; cursor: pointer; color: var(--bar-ink); }

@@ -40,18 +40,19 @@
         <div class="appbar-row">
           <div class="brand">
             <p class="wordmark">Nearline<span class="wordmark-line">what's happening here</span></p>
+            <p class="status-line" aria-live="polite" aria-atomic="true">
+              <span class="status-dot" data-sync-dot aria-hidden="true"></span>
+              <span class="status-label" data-sync-label>Connecting…</span>
+            </p>
+          </div>
+          <div class="appbar-trailing">
             <button class="scope-button" type="button" aria-haspopup="dialog" aria-controls="range-dialog">
               <span class="scope-private">Private ·</span>
               <span id="scope-status">Nearby</span>
               <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
               <span class="sr-only">, change how far you're listening</span>
             </button>
-            <p class="status-line" aria-live="polite" aria-atomic="true">
-              <span class="status-dot" data-sync-dot aria-hidden="true"></span>
-              <span class="status-label" data-sync-label>Connecting…</span>
-            </p>
-          </div>
-          <details class="identity-menu" data-identity-menu>
+            <details class="identity-menu" data-identity-menu>
             <summary aria-label="Account and settings">
               <span class="me-avatar" data-author-mark aria-hidden="true"></span>
             </summary>

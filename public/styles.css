@@ -228,13 +228,23 @@ body:has(> .gate:not([hidden]))::before { content: ""; }
 .brand { min-width: 0; display: grid; grid-template-columns: auto auto; justify-content: start; align-items: center; column-gap: 8px; }
 .wordmark { grid-column: 1; display: flex; align-items: center; gap: 8px; font-size: var(--t-20); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
 .wordmark-line { display: none; }
-/* The sync dot rides on the wordmark: dim while connecting, green while polls succeed. */
-.frame .wordmark::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--bar-muted); transition: background-color var(--fast); }
-:root.live .frame .wordmark::after { background: var(--live); }
-.status-line { grid-column: 2; display: flex; align-items: center; color: var(--bar-muted); font-size: var(--t-12); white-space: nowrap; }
-.status-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
-:root:not(.live) .status-label { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
-.status-dot, .frame-note { display: none; }
+
+/* Sync overlay: blurs the whole app when not live. */
+.sync-overlay {
+  position: fixed; inset: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--canvas) 70%, transparent);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  opacity: 0; pointer-events: none;
+  transition: opacity 240ms var(--ease-out);
+}
+:root:not(.live) .sync-overlay { opacity: 1; pointer-events: auto; }
+.sync-overlay-text {
+  padding: 12px 24px; border-radius: var(--pill);
+  background: var(--bar); color: var(--bar-ink);
+  font-size: var(--t-16); font-weight: 700;
+  box-shadow: var(--shadow);
+}
 
 /* The range selector is a dropdown button showing the current value. */
 .scope-button {
@@ -410,7 +420,7 @@ body.doc { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 #composer { grid-template-columns: auto minmax(0, 1fr) auto; }
 /* Audience: who this post goes to. Public, or the private feed you're in. */
 .audience-chip {
-  min-width: 0; max-width: 132px; min-height: 48px; padding: 0 10px 0 12px; display: inline-flex; align-items: center; gap: 6px;
+  min-width: 0; max-width: 96px; min-height: 48px; padding: 0 10px 0 12px; display: inline-flex; align-items: center; gap: 6px;
   border: 0; border-radius: var(--pill); background: var(--surface); color: var(--ink);
   box-shadow: var(--bubble-shadow), 0 0 0 1px var(--line);
   font-size: var(--t-14); font-weight: 700;

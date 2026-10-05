@@ -40,10 +40,6 @@
         <div class="appbar-row">
           <div class="brand">
             <p class="wordmark">Nearline<span class="wordmark-line">what's happening here</span></p>
-            <p class="status-line" aria-live="polite" aria-atomic="true">
-              <span class="status-dot" data-sync-dot aria-hidden="true"></span>
-              <span class="status-label" data-sync-label>Connecting…</span>
-            </p>
           </div>
           <div class="appbar-trailing">
             <button class="scope-button" type="button" aria-haspopup="dialog" aria-controls="range-dialog">
@@ -166,5 +162,8 @@
     </dialog>
 
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    <div class="sync-overlay" aria-live="polite" aria-atomic="true">
+      <span class="sync-overlay-text" data-sync-label>Connecting…</span>
+    </div>
   </body>
 </html>

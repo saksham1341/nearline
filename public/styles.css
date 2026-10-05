@@ -382,7 +382,7 @@ body.doc { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
   background: var(--bg); animation: slide-in 200ms var(--ease-out) both;
 }
 .thread-header {
-  flex: none; height: 48px; display: flex; align-items: center; gap: 4px; padding: 0 8px 0 4px;
+  flex: none; height: 56px; display: flex; align-items: center; gap: 4px; padding: 0 8px 0 4px;
   background: var(--bar); color: var(--bar-ink);
 }
 .thread-header .icon-button { width: 40px; height: 40px; }
@@ -561,7 +561,7 @@ textarea:focus, textarea:focus-visible { outline: none; box-shadow: none; }
     border-radius: 12px; overflow: hidden;
     box-shadow: 0 0 0 1px var(--island-line), 0 18px 48px -12px rgba(0, 0, 0, 0.35);
   }
-  .thread-header { height: 64px; padding: 0 12px 0 8px; }
+  .thread-header { height: 56px; padding: 0 12px 0 8px; }
   .thread-title { font-size: var(--t-16); }
 }
 

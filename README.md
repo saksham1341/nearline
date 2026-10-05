@@ -16,6 +16,16 @@ npm test
 npm run build
 ```
 
+### UI preview (no backend)
+
+```bash
+npm run preview          # http://localhost:8788
+```
+
+Serves the real web client against a fake in-page API (`dev/preview/mock-api.js`) with a fixed location and a signed-in user. Posting, replying, liking, reposting and deleting work in memory. `app.js` rebuilds on every change under `apps/` and `packages/`; reload the page to see HTML and CSS edits. Add `#gate` to the URL for the sign-in screen, `#empty` for an empty feed.
+
+### Full Worker
+
 Running the Worker locally needs a `.dev.vars` file:
 
 ```
@@ -51,6 +61,7 @@ Then `npm run deploy`.
 - `npm run typecheck` — strict TypeScript for the Worker and the browser app
 - `npm run build` — browser bundle plus typecheck
 - `npm run dev` — build the browser bundle and start Wrangler
+- `npm run preview` — the web client against a fake API, for UI work without deploying
 
 ## Structure
 

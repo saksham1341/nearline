@@ -6,6 +6,7 @@
     "build": "npm run build:web && npm run typecheck",
     "build:web": "esbuild apps/web/main.ts --bundle --format=esm --target=es2022 --outfile=public/app.js",
     "dev": "npm run build:web && wrangler dev",
+    "preview": "node dev/preview/serve.mjs",
     "deploy": "npm run build:web && wrangler deploy",
     "test": "vitest run",
     "typecheck": "tsc --noEmit && tsc --noEmit -p apps/web/tsconfig.json"

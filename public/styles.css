@@ -166,7 +166,11 @@ h1, h2, p { margin: 0; }
 }
 :root.room-active .frame { box-shadow: inset 0 3px 0 var(--private); }
 .frame-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; }
-.wordmark { display: flex; flex-direction: column; font-size: var(--t-20); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+.wordmark { display: grid; grid-template-columns: auto auto; justify-content: start; align-items: center; column-gap: 8px; font-size: var(--t-20); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+.wordmark-line { grid-column: 1 / -1; }
+/* The sync dot rides on the wordmark: grey while connecting, green while polls succeed. */
+.frame .wordmark::after { content: ""; grid-row: 1; grid-column: 2; width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); transition: background-color var(--fast); }
+:root.live .frame .wordmark::after { background: var(--live); }
 .wordmark-line { display: none; color: var(--ink-2); font-size: var(--t-14); font-weight: 400; letter-spacing: 0; }
 .frame-actions { display: flex; align-items: center; gap: 4px; min-width: 0; }
 .room-toggle {
@@ -205,10 +209,13 @@ h1, h2, p { margin: 0; }
 .range-control button small { display: none; }
 .range-control button[aria-pressed="true"] { background: var(--bg); color: var(--ink); box-shadow: 0 1px 3px rgba(15, 20, 25, 0.16); }
 
-.status-line { margin-top: 8px; display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: var(--t-12); }
+/* Sync status: a quiet dot beside the wordmark; words appear only while it is not live. */
+.brand { min-width: 0; display: flex; align-items: center; gap: 8px; }
+.status-line { display: flex; align-items: center; gap: 4px; color: var(--ink-2); font-size: var(--t-12); white-space: nowrap; }
+.status-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+:root:not(.live) .status-label { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
 #scope-status, .status-separator { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
-.status-dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--ink-3); transition: background-color var(--fast); }
-.status-dot.online { background: var(--live); }
+.status-dot { display: none; }
 .frame-note { display: none; }
 
 /* ---------- Feed column ---------- */
@@ -431,7 +438,7 @@ textarea:focus, textarea:focus-visible { outline: none; box-shadow: none; }
   .range-control button span { font-size: var(--t-16); }
   .range-control button small { display: block; color: var(--ink-3); font-size: var(--t-12); }
   .range-control button[aria-pressed="true"] { background: var(--surface); box-shadow: none; }
-  .status-line { margin-top: 0; padding-left: 16px; }
+  .brand { flex-direction: column; align-items: flex-start; gap: 4px; }
   .board { min-width: 0; }
   .post { padding-inline: 24px; }
   :root.room-active .board { border-top: 3px solid var(--private); }

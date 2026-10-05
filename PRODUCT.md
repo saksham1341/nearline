@@ -2,47 +2,47 @@
 
 <!-- impeccable:product-schema 1 -->
 
-> The owner gave no direction for this record ("I am giving no direction"). Everything below is inferred from SPEC.md, README.md and the shipped client, and is unconfirmed until the owner reviews it.
-
 ## Platform
 
 web
 
 ## Users
-People physically near each other who want to talk casually with whoever else is around right now: a campus quad, a festival field, a stadium section, a neighbourhood, a train platform. They open the site on a phone, mostly outdoors or in transit, often for a few minutes at a time. A second group uses it on a laptop at a desk or in a café. (Inferred.)
+People physically near each other who want to know, and say, what is happening around them right now: a campus, a festival, a stadium, a neighbourhood, a street, a train platform. Mostly on a phone, outdoors or in transit, often for a few minutes at a time; sometimes on a laptop.
 
 ## Product Purpose
-Nearline is an extremely lightweight website for talking to people physically near you. Open the site, authenticate with a passkey, grant location, and you are in the local conversation immediately. Success is the time from opening the site to reading or sending a message, plus the feeling that the line is live and local.
+Nearline is "what's happening here": a local, X-style feed of posts, replies, likes and reposts from the people physically around you. Open it, sign in with a passkey, allow location, and you see what the place is talking about. Nothing is kept: a thread fades fifteen minutes after its last activity, and inside a thread every quiet branch fades on its own while active ones stay. Success is how quickly someone gets a feel for what is going on around them and joins in.
 
 ## Positioning
-Geography is a filter, not a room. Each message has one position (an H3 cell), and what you see depends on where you are and how far you choose to listen. Nothing is stored: delivery is live-only, and the browser owns its transcript. A neighbouring product with rooms, profiles or history could not honestly claim this.
+X answers "what's happening" for the world; Nearline answers it for this place, this hour. Geography is a filter, not a room: each post is anchored to where it was made (an H3 cell), and you see what is anchored within your chosen range. Reposts carry a thread to where the reposter stands, so things spread hand to hand. Conversations are alive only while people tend them.
 
 ## Operating Context
-- Phone-first, one-handed use, often outdoors in daylight or at night in transit; also desktop browser use.
-- Passkey sign-in (no username or password), browser geolocation, a WebSocket that may drop and reconnect.
-- Three listening ranges: Close (about the same block), Nearby (default, a few blocks), Wide (the wider neighbourhood). These correspond to H3 resolutions 11, 10 and 9 with a one-cell ring.
-- Optional private filter: a room ID plus a passphrase hashed into a tag. Only people nearby using the same pair see those messages.
+- Phone-first, one-handed, often outdoors in daylight or at night; also desktop.
+- Passkey sign-in, browser geolocation, polling every few seconds (no push).
+- Three ranges: Close (about a block), Nearby (default, a few blocks), Wide (the neighbourhood).
+- Two feeds: Latest (newest first) and Trending (decayed engagement: like 1, repost 2, reply 27, author replies 150; half-life 5 minutes; at least two participants).
+- Threads have a reply tree of any depth; the client shows four levels and then "continue thread".
+- Optional private filter: room ID plus passphrase, hashed; only people nearby using the same pair see those threads.
 
 ## Capabilities and Constraints
-- Text messages only, up to 1,000 characters. Rate limited.
-- No profiles, room directories, membership lists, friends, media, reactions, threads, moderation roles or account recovery.
-- Author identity is an 8-character hex label derived from the passkey; it is the only identity shown.
-- Messages missed while disconnected are gone by design.
-- Raw coordinates never leave the browser; only the H3 cell does.
-- The client is a dependency-light, framework-free TypeScript bundle (esbuild) served as static assets by a Cloudflare Worker.
+- Text only, up to 1,000 characters per post; 500 posts per thread.
+- Post, reply (to any post), like, unlike, repost (once per person per thread), delete own posts (a post with replies becomes "[deleted]").
+- Every thread and every branch fades 15 minutes after its last activity; the remaining life is shown per post.
+- Identity is an anonymous 8-hex label derived from the passkey, with a colour derived from it. No profiles, follows, media, notifications, search or moderation roles.
+- Raw coordinates never leave the browser.
+- Framework-free TypeScript client (esbuild), static assets served by a Cloudflare Worker. A public explainer page (`/how-it-works`) describes the whole system.
 
 ## Brand Commitments
-Name: Nearline. Existing voice is short, calm and plain ("Talk to people nearby.", "Quiet here. Start the line."). No other binding visual commitment exists.
+Name: Nearline. Line: "It's what's happening here." Voice is short, plain and warm. No other binding visual commitment; the previous road-marking look is retired.
 
 ## Evidence on Hand
-No users, testimonials, metrics or press. Never invent counts of people nearby, activity statistics or claims of popularity.
+No users, testimonials, metrics or press. Never invent counts of people nearby, activity statistics or popularity claims.
 
 ## Product Principles
-1. Immediate: from open to talking in as few steps as possible.
-2. Ephemeral: the interface should feel like a live line, not an archive.
-3. Local: distance is the organising idea, and the interface should make range legible.
-4. Anonymous by default: identity is a short label, never a profile.
-5. Honest: never imply presence, history or delivery guarantees the system does not provide.
+1. Here and now: everything shown is from this place and this hour.
+2. Alive or gone: what people tend stays; what they leave fades, visibly.
+3. Range is legible: you always know how far you are listening.
+4. Anonymous by default: a label and a colour, never a profile.
+5. Honest: never imply presence, permanence or reach the system does not have.
 
 ## Accessibility & Inclusion
-Readable outdoors on phones (strong contrast, large touch targets), keyboard usable on desktop, respects reduced motion. No specific standard was set; WCAG 2.2 AA is the assumed floor.
+Readable outdoors on phones (strong contrast, large touch targets), keyboard usable on desktop, respects reduced motion. WCAG 2.2 AA is the floor.

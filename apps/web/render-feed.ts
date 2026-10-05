@@ -1,7 +1,7 @@
 import type { FeedTab } from "../../packages/protocol/index.ts";
 import { THREAD_TTL_MS } from "../../packages/shared/constants.ts";
 import type { FeedState } from "./feed-state.ts";
-import { formatAge, renderPostCard } from "./render-post.ts";
+import { formatAge, LIFE_TICKS, renderPostCard } from "./render-post.ts";
 
 export interface FeedRenderContext {
   currentAuthor: string;
@@ -58,7 +58,13 @@ export function refreshTimes(root: ParentNode, now: number): void {
     time.textContent = formatAge(Number(time.dataset.ts), now);
   }
   for (const life of root.querySelectorAll<HTMLElement>(".life[data-expires-at]")) {
-    const remaining = Math.max(0, Math.min(1, (Number(life.dataset.expiresAt) - now) / THREAD_TTL_MS));
+    const remainingMs = Number(life.dataset.expiresAt) - now;
+    const remaining = Math.max(0, Math.min(1, remainingMs / THREAD_TTL_MS));
     life.style.setProperty("--life", remaining.toFixed(4));
+    // Whole minutes left, one tick each; ticks beyond that are spent (a theme may tear them off).
+    const left = Math.max(0, Math.min(LIFE_TICKS, Math.ceil(remainingMs / 60_000)));
+    if (life.dataset.left === String(left)) continue;
+    life.dataset.left = String(left);
+    Array.from(life.children).forEach((tick, index) => tick.classList.toggle("spent", index >= left));
   }
 }

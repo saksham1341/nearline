@@ -20,6 +20,15 @@
         ],
         "createdAt": "2026-10-05T05:21:52.861Z",
         "reason": "Claude (agent) decided: body overflow hidden is the fixed full-viewport app shell; identity popover opens within conversation bounds"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "public/how-it-works.html"
+        ],
+        "createdAt": "2026-10-05T08:18:22.171Z",
+        "reason": "Claude (agent) decided: .doc-shell has clamp(18px, 5vw, 48px) side padding; detector does not evaluate clamp()"
       }
     ]
   }

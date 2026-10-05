@@ -1,4 +1,10 @@
 import type { Anchor, PostView } from "../../packages/protocol/index.ts";
+import { THREAD_TTL_MS } from "../../packages/shared/constants.ts";
+
+/** One tick per minute of life a post can have. The theme decides how ticks look (tabs, a bar…). */
+export const LIFE_TICKS = Math.round(THREAD_TTL_MS / 60_000);
+/** How many paper stocks the theme defines (`data-paper="0"` … `"7"`). */
+const PAPER_STOCKS = 8;
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -27,6 +33,13 @@ export function icon(name: IconName): SVGSVGElement {
 export function authorColor(author: string): string {
   const hue = Number.parseInt(author.slice(0, 4), 16) % 360;
   return Number.isFinite(hue) ? `hsl(${hue} 72% 66%)` : "";
+}
+
+/** A stable paper stock and a small tilt per author, so the same person always looks the same. */
+export function authorStyle(author: string): { paper: number; tilt: number } {
+  const value = Number.parseInt(author.slice(0, 6), 16);
+  if (!Number.isFinite(value)) return { paper: 7, tilt: 0 };
+  return { paper: value % PAPER_STOCKS, tilt: ((value >> 3) % 9 - 4) / 8 };
 }
 
 export function formatAge(timestamp: number, now: number): string {
@@ -61,6 +74,9 @@ export function renderPostCard(options: PostCardOptions): HTMLElement {
   article.dataset.threadId = threadId;
   article.dataset.postId = post.id;
   article.style.setProperty("--stud", authorColor(post.author));
+  const look = authorStyle(post.author);
+  article.dataset.paper = String(post.deleted ? 7 : look.paper);
+  article.style.setProperty("--tilt", `${look.tilt}deg`);
   if (variant === "feed") {
     article.dataset.action = "open";
     article.tabIndex = 0;
@@ -103,7 +119,7 @@ export function renderPostCard(options: PostCardOptions): HTMLElement {
     life.className = "life";
     life.dataset.expiresAt = String(options.expiresAt);
     life.setAttribute("aria-hidden", "true");
-    life.append(document.createElement("span"));
+    for (let tick = 0; tick < LIFE_TICKS; tick += 1) life.append(document.createElement("span"));
     article.append(life);
   }
   return article;

@@ -3,86 +3,49 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-    <meta name="theme-color" content="#18191b">
-    <meta name="description" content="A live local feed for people nearby.">
+    <meta name="theme-color" content="#171411">
+    <meta name="description" content="It's what's happening here: a local feed of posts from the people around you.">
     <title>Nearline</title>
-    <link rel="preload" href="/fonts/barlow-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="/fonts/barlow-condensed-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/archivo-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/styles.css">
     <script type="module" src="/app.js"></script>
   </head>
   <body>
     <main id="auth-view" class="gate" hidden>
-      <div class="gate-road" aria-hidden="true">
-        <span class="road-word">Nearline</span>
-        <span class="road-stop"></span>
-      </div>
-      <section class="gate-content" aria-labelledby="auth-title">
+      <section class="gate-flyer" aria-labelledby="auth-title">
         <p class="sr-only">Nearline</p>
-        <h1 id="auth-title">Talk to people nearby.</h1>
-        <p class="gate-copy">Posts from around you. Every thread fades fifteen minutes after it goes quiet.</p>
+        <h1 id="auth-title">It's what's happening here.</h1>
+        <p class="gate-copy">Notes from the people around you. Every one comes down fifteen minutes after it goes quiet.</p>
         <div class="gate-actions">
           <button id="login-button" class="button primary" type="button">Continue with passkey</button>
           <button id="register-button" class="button secondary" type="button">New here? Create a passkey</button>
         </div>
         <p class="support-copy">No username or password. <a class="text-link" href="/how-it-works.html">How Nearline works</a></p>
+        <div class="gate-fringe" aria-hidden="true"><span>nearline</span><span>nearline</span><span>nearline</span><span>nearline</span><span>nearline</span><span>nearline</span><span>nearline</span></div>
       </section>
     </main>
 
     <main id="location-view" class="gate" hidden>
-      <div class="gate-road" aria-hidden="true">
-        <span class="road-word">Nearline</span>
-        <span class="road-stop"></span>
-      </div>
-      <section class="gate-content" aria-labelledby="location-title">
+      <section class="gate-flyer" aria-labelledby="location-title">
         <p class="sr-only">Nearline</p>
-        <h1 id="location-title">Enter the local line.</h1>
+        <h1 id="location-title">What's happening around you?</h1>
         <p id="location-copy" class="gate-copy">Nearline shows posts from around you. Location is required to continue.</p>
         <button id="location-button" class="button primary" type="button">Use my location</button>
+        <div class="gate-fringe" aria-hidden="true"><span>nearline</span><span>nearline</span><span>nearline</span><span>nearline</span><span>nearline</span><span>nearline</span><span>nearline</span></div>
       </section>
     </main>
 
-    <main id="chat-view" class="app-shell" hidden>
-      <aside class="sidebar" aria-label="Nearline controls">
-        <div class="sidebar-brand">
-          <span class="painted-mark">Nearline</span>
-        </div>
-
-        <section class="sidebar-section" aria-labelledby="range-heading">
-          <h2 id="range-heading" class="group-label">Range</h2>
-          <div class="range-control vertical" role="group" aria-labelledby="range-heading">
-            <button type="button" data-scope="11" aria-pressed="false"><span>Close</span><small>about a block</small></button>
-            <button type="button" data-scope="10" aria-pressed="true"><span>Nearby</span><small>a few blocks</small></button>
-            <button type="button" data-scope="9" aria-pressed="false"><span>Wide</span><small>the neighbourhood</small></button>
-          </div>
-        </section>
-
-        <section class="sidebar-section" aria-labelledby="view-heading">
-          <h2 id="view-heading" class="group-label">View</h2>
-          <button class="view-toggle" data-room-button type="button" aria-haspopup="dialog" aria-controls="room-dialog">
-            <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>
-            <span data-room-button-label>Public</span>
-            <span class="view-toggle-action">Change</span>
-          </button>
-          <p id="desktop-view-description" class="sidebar-note">Open local feed</p>
-        </section>
-
-        <footer class="sidebar-footer">
-          <p class="live-state"><span class="status-dot" data-sync-dot aria-hidden="true"></span><span data-sync-label>Connecting…</span></p>
-          <a class="text-link" href="/how-it-works.html">How Nearline works</a>
-          <div class="identity-row">
-            <span class="identity" data-author-label>@--------</span>
-            <button class="text-button" data-logout type="button">Log out</button>
-          </div>
-        </footer>
-      </aside>
-
-      <section class="conversation" aria-label="Feed">
-        <header class="topbar">
-          <span class="painted-mark">Nearline</span>
-          <div class="topbar-actions">
+    <main id="chat-view" class="app" hidden>
+      <header class="frame" aria-label="Nearline controls">
+        <div class="frame-top">
+          <p class="wordmark">Nearline<span class="wordmark-line">what's happening here</span></p>
+          <div class="frame-actions">
+            <button class="room-toggle" data-room-button type="button" aria-haspopup="dialog" aria-controls="room-dialog">
+              <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>
+              <span data-room-button-label>Public</span>
+            </button>
             <details class="identity-menu" data-identity-menu>
-              <summary aria-label="Identity actions">
+              <summary aria-label="Identity and settings">
                 <span class="identity" data-author-label>@--------</span>
                 <svg class="icon chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
               </summary>
@@ -92,17 +55,14 @@
                 <button data-logout type="button">Log out</button>
               </div>
             </details>
-            <button class="view-toggle compact" data-room-button type="button" aria-haspopup="dialog" aria-controls="room-dialog">
-              <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>
-              <span data-room-button-label>Public</span>
-            </button>
           </div>
-        </header>
+        </div>
 
-        <section class="range-strip" aria-label="Range">
-          <div class="range-control horizontal" role="group" aria-label="Range">
+        <section class="range" aria-labelledby="range-heading">
+          <h2 id="range-heading" class="range-heading">How far you're listening</h2>
+          <div class="range-control" role="group" aria-labelledby="range-heading">
             <button type="button" data-scope="11" aria-pressed="false"><span>Close</span><small>a block</small></button>
-            <button type="button" data-scope="10" aria-pressed="true"><span>Nearby</span><small>few blocks</small></button>
+            <button type="button" data-scope="10" aria-pressed="true"><span>Nearby</span><small>a few blocks</small></button>
             <button type="button" data-scope="9" aria-pressed="false"><span>Wide</span><small>neighbourhood</small></button>
           </div>
           <label class="sr-only" for="scope-select">Range</label>
@@ -113,29 +73,28 @@
           </select>
         </section>
 
-        <header class="conversation-header">
-          <span id="desktop-view-status">Public · Nearby</span>
-          <span class="live-state"><span class="status-dot" data-sync-dot aria-hidden="true"></span><span data-sync-label>Connecting…</span></span>
-        </header>
-
-        <div class="lane" aria-hidden="true"></div>
-
         <p class="status-line" aria-live="polite" aria-atomic="true">
           <span class="status-dot" data-sync-dot aria-hidden="true"></span>
           <span id="scope-status">Nearby</span>
-          <span class="status-separator" aria-hidden="true">/</span>
+          <span class="status-separator" aria-hidden="true">·</span>
           <span data-sync-label>Connecting…</span>
         </p>
+        <p id="desktop-view-description" class="frame-note">Open local feed</p>
+      </header>
 
-        <div class="feed-tabs" role="tablist" aria-label="Feed">
-          <button id="tab-latest" type="button" role="tab" aria-selected="true" aria-controls="feed" data-tab="latest">Latest</button>
-          <button id="tab-trending" type="button" role="tab" aria-selected="false" aria-controls="feed" data-tab="trending">Trending</button>
+      <section class="board" aria-label="Board">
+        <div class="board-head">
+          <h2 id="desktop-view-status" class="board-title">Public · Nearby</h2>
+          <div class="feed-tabs" role="tablist" aria-label="Feed">
+            <button id="tab-latest" type="button" role="tab" aria-selected="true" aria-controls="feed" data-tab="latest">Latest</button>
+            <button id="tab-trending" type="button" role="tab" aria-selected="false" aria-controls="feed" data-tab="trending">Trending</button>
+          </div>
         </div>
 
         <section id="feed" class="feed" aria-label="Posts nearby">
           <button id="new-posts" class="new-posts" type="button" hidden>New posts</button>
           <div id="feed-list" class="feed-list" role="feed" aria-busy="false"></div>
-          <div id="empty-state" class="empty-state"><p id="empty-title">Quiet here</p><span id="empty-copy">Start the line.</span></div>
+          <div id="empty-state" class="empty-state"><p id="empty-title">Nothing pinned here yet</p><span id="empty-copy">Pin the first note.</span></div>
           <button id="load-more" class="button secondary load-more" type="button" hidden>Load more</button>
         </section>
 
@@ -144,13 +103,13 @@
             <span class="sr-only">New post</span>
             <textarea id="message-input" rows="1" maxlength="1000" placeholder="Post nearby…" enterkeyhint="send"></textarea>
           </label>
-          <button id="send-button" class="send-button" type="submit" disabled>Post</button>
+          <button id="send-button" class="send-button" type="submit" disabled>Pin it</button>
         </form>
       </section>
 
       <section id="thread-view" class="thread-view" aria-label="Thread" hidden>
         <header class="thread-header">
-          <button id="thread-back" class="icon-button" type="button" aria-label="Back to feed">
+          <button id="thread-back" class="icon-button" type="button" aria-label="Back to the board">
             <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5"/></svg>
           </button>
           <h2 class="thread-title">Thread</h2>
@@ -172,11 +131,11 @@
     </main>
 
     <dialog id="room-dialog" class="filter-dialog" aria-labelledby="filter-title">
-      <div class="hatch" aria-hidden="true"></div>
+      <div class="felt-band" aria-hidden="true"></div>
       <form id="room-form" method="dialog">
         <header class="dialog-header">
-          <h2 id="filter-title">Private filter</h2>
-          <button id="room-close" class="icon-button" value="cancel" aria-label="Close private filter" type="submit" formnovalidate>
+          <h2 id="filter-title">Private board</h2>
+          <button id="room-close" class="icon-button" value="cancel" aria-label="Close private board" type="submit" formnovalidate>
             <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8"/></svg>
           </button>
         </header>
@@ -186,8 +145,8 @@
         <label class="field-label" for="room-passphrase">Passphrase</label>
         <input id="room-passphrase" type="password" autocomplete="off" maxlength="200" required>
         <div class="dialog-actions">
-          <button id="leave-room" class="button secondary" type="button" hidden>Return to public</button>
-          <button class="button restrict" value="default" type="submit">Apply filter</button>
+          <button id="leave-room" class="button secondary" type="button" hidden>Back to the public board</button>
+          <button class="button felt" value="default" type="submit">Open private board</button>
         </div>
       </form>
     </dialog>

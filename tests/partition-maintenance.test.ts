@@ -76,4 +76,14 @@ describe("partition maintenance", () => {
     expect(await markDrained({ partition: () => r8, isEmpty: () => true }, active.kv, NOW)).toBe(false);
     expect(active.store.has(`drain:${r8}`)).toBe(false);
   });
+
+  it("does not merge while a sibling is itself split into busier cells", async () => {
+    const splitAt = NOW - (MERGE_QUIET_MINUTES + 1) * 60_000;
+    const sibling = childrenOf(r7).find((cell) => cell !== r8)!;
+    const { kv } = fakeKv({
+      [`split:${r7}`]: { value: "", metadata: { splitAt } },
+      [`split:${sibling}`]: { value: "", metadata: { splitAt } },
+    });
+    expect(await maintainPartition(db(r8, []), kv, NOW)).toBe("idle");
+  });
 });

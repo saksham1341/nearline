@@ -52,8 +52,15 @@ export async function maintainPartition(
   const parent = parentAt(partition, resolution - 1);
   const entry = (await kv.getWithMetadata<SplitEntry>(`split:${parent}`)).metadata;
   if (!entry || entry.mergedAt !== undefined || now - entry.splitAt < MERGE_QUIET_MINUTES * 60_000) return "idle";
-  const busy = await Promise.all(childrenOf(parent).map((child) => kv.get(`busy:${child}`)));
+  // A child that is itself split serves its load through smaller cells, which never write a busy key
+  // at this level; merging over it would undo a split that is still needed.
+  const children = childrenOf(parent);
+  const [busy, splitChildren] = await Promise.all([
+    Promise.all(children.map((child) => kv.get(`busy:${child}`))),
+    Promise.all(children.map((child) => kv.getWithMetadata<SplitEntry>(`split:${child}`))),
+  ]);
   if (busy.some((value) => value !== null)) return "idle";
+  if (splitChildren.some(({ metadata }) => metadata !== null && metadata.mergedAt === undefined)) return "idle";
   await kv.put(`split:${parent}`, "", {
     metadata: { splitAt: entry.splitAt, mergedAt: now } satisfies SplitEntry,
     // Kept while children may still be drained; KV deletes it after the retired-partition cap.

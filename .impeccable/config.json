@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "public/index.html"
+        ],
+        "createdAt": "2026-10-05T05:21:52.854Z",
+        "reason": "Claude (agent) decided: only hit is the private-filter dialog, whose form has 24px bottom padding; detector misreads the wrapper"
+      },
+      {
+        "rule": "clipped-overflow-container",
+        "value": "*",
+        "files": [
+          "public/index.html"
+        ],
+        "createdAt": "2026-10-05T05:21:52.861Z",
+        "reason": "Claude (agent) decided: body overflow hidden is the fixed full-viewport app shell; identity popover opens within conversation bounds"
+      }
+    ]
+  }
+}

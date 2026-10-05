@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en" data-scope="10">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+    <meta name="theme-color" content="#18191b">
+    <meta name="description" content="A live text line for people nearby.">
+    <title>Nearline</title>
+    <link rel="preload" href="/fonts/barlow-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/barlow-condensed-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="/styles.css">
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <main id="auth-view" class="gate" hidden>
+      <div class="gate-road" aria-hidden="true">
+        <span class="road-word">Nearline</span>
+        <span class="road-stop"></span>
+      </div>
+      <section class="gate-content" aria-labelledby="auth-title">
+        <p class="sr-only">Nearline</p>
+        <h1 id="auth-title">Talk to people nearby.</h1>
+        <p class="gate-copy">A live, anonymous line shaped by where you are.</p>
+        <div class="gate-actions">
+          <button id="login-button" class="button primary" type="button">Continue with passkey</button>
+          <button id="register-button" class="button secondary" type="button">New here? Create a passkey</button>
+        </div>
+        <p class="support-copy">No username or password. No message history.</p>
+      </section>
+    </main>
+
+    <main id="location-view" class="gate" hidden>
+      <div class="gate-road" aria-hidden="true">
+        <span class="road-word">Nearline</span>
+        <span class="road-stop"></span>
+      </div>
+      <section class="gate-content" aria-labelledby="location-title">
+        <p class="sr-only">Nearline</p>
+        <h1 id="location-title">Enter the local line.</h1>
+        <p id="location-copy" class="gate-copy">Nearline works by showing conversations around you. Location is required to continue.</p>
+        <button id="location-button" class="button primary" type="button">Use my location</button>
+      </section>
+    </main>
+
+    <main id="chat-view" class="app-shell" hidden>
+      <aside class="sidebar" aria-label="Nearline controls">
+        <div class="sidebar-brand">
+          <span class="painted-mark">Nearline</span>
+        </div>
+
+        <section class="sidebar-section" aria-labelledby="range-heading">
+          <h2 id="range-heading" class="group-label">Range</h2>
+          <div class="range-control vertical" role="group" aria-labelledby="range-heading">
+            <button type="button" data-scope="11" aria-pressed="false"><span>Close</span><small>about a block</small></button>
+            <button type="button" data-scope="10" aria-pressed="true"><span>Nearby</span><small>a few blocks</small></button>
+            <button type="button" data-scope="9" aria-pressed="false"><span>Wide</span><small>the neighbourhood</small></button>
+          </div>
+        </section>
+
+        <section class="sidebar-section" aria-labelledby="view-heading">
+          <h2 id="view-heading" class="group-label">View</h2>
+          <button class="view-toggle" data-room-button type="button" aria-haspopup="dialog" aria-controls="room-dialog">
+            <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>
+            <span data-room-button-label>Public</span>
+            <span class="view-toggle-action">Change</span>
+          </button>
+          <p id="desktop-view-description" class="sidebar-note">Open local conversation</p>
+        </section>
+
+        <footer class="sidebar-footer">
+          <p class="live-state"><span class="status-dot" data-connection-dot aria-hidden="true"></span><span data-connection-label>Connecting…</span></p>
+          <div class="identity-row">
+            <span class="identity" data-author-label>@--------</span>
+            <button class="text-button" data-logout type="button">Log out</button>
+          </div>
+        </footer>
+      </aside>
+
+      <section class="conversation" aria-label="Conversation">
+        <header class="topbar">
+          <span class="painted-mark">Nearline</span>
+          <div class="topbar-actions">
+            <details class="identity-menu" data-identity-menu>
+              <summary aria-label="Identity actions">
+                <span class="identity" data-author-label>@--------</span>
+                <svg class="icon chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
+              </summary>
+              <div class="identity-popover">
+                <span class="identity-popover-label">Signed in with passkey</span>
+                <button data-logout type="button">Log out</button>
+              </div>
+            </details>
+            <button class="view-toggle compact" data-room-button type="button" aria-haspopup="dialog" aria-controls="room-dialog">
+              <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>
+              <span data-room-button-label>Public</span>
+            </button>
+          </div>
+        </header>
+
+        <section class="range-strip" aria-label="Range and connection">
+          <div class="range-control horizontal" role="group" aria-label="Range">
+            <button type="button" data-scope="11" aria-pressed="false"><span>Close</span><small>a block</small></button>
+            <button type="button" data-scope="10" aria-pressed="true"><span>Nearby</span><small>few blocks</small></button>
+            <button type="button" data-scope="9" aria-pressed="false"><span>Wide</span><small>neighbourhood</small></button>
+          </div>
+          <label class="sr-only" for="scope-select">Range</label>
+          <select id="scope-select" class="sr-only" tabindex="-1" aria-hidden="true">
+            <option value="9">Wide</option>
+            <option value="10" selected>Nearby</option>
+            <option value="11">Close</option>
+          </select>
+        </section>
+
+        <header class="conversation-header">
+          <span id="desktop-view-status">Public · Nearby</span>
+          <span class="live-state"><span class="status-dot" data-connection-dot aria-hidden="true"></span><span data-connection-label>Connecting…</span></span>
+        </header>
+
+        <div class="lane" aria-hidden="true"></div>
+
+        <p class="status-line" aria-live="polite" aria-atomic="true">
+          <span class="status-dot" data-connection-dot aria-hidden="true"></span>
+          <span id="scope-status">Nearby</span>
+          <span class="status-separator" aria-hidden="true">/</span>
+          <span data-connection-label>Connecting…</span>
+        </p>
+
+        <section id="transcript" class="transcript" role="log" aria-label="Nearby messages" aria-live="polite" aria-relevant="additions" aria-atomic="false">
+          <div id="empty-state" class="empty-state"><p>Quiet here</p><span>Start the line.</span></div>
+        </section>
+
+        <button id="new-messages" class="new-messages" type="button" hidden>
+          New messages
+          <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M4 9l4 4 4-4"/></svg>
+        </button>
+
+        <form id="composer" class="composer">
+          <label class="composer-field">
+            <span class="sr-only">Message</span>
+            <textarea id="message-input" rows="1" maxlength="1000" placeholder="Message nearby…" enterkeyhint="send"></textarea>
+          </label>
+          <button id="send-button" class="send-button" type="submit" disabled>Send</button>
+        </form>
+      </section>
+    </main>
+
+    <dialog id="room-dialog" class="filter-dialog" aria-labelledby="filter-title">
+      <div class="hatch" aria-hidden="true"></div>
+      <form id="room-form" method="dialog">
+        <header class="dialog-header">
+          <h2 id="filter-title">Private filter</h2>
+          <button id="room-close" class="icon-button" value="cancel" aria-label="Close private filter" type="submit" formnovalidate>
+            <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8"/></svg>
+          </button>
+        </header>
+        <p class="dialog-copy">Only people nearby using the same room ID and passphrase will see your messages, and you will see only theirs.</p>
+        <label class="field-label" for="room-id">Room ID</label>
+        <input id="room-id" autocomplete="off" autocapitalize="none" autocorrect="off" maxlength="100" required>
+        <label class="field-label" for="room-passphrase">Passphrase</label>
+        <input id="room-passphrase" type="password" autocomplete="off" maxlength="200" required>
+        <div class="dialog-actions">
+          <button id="leave-room" class="button secondary" type="button" hidden>Return to public</button>
+          <button class="button restrict" value="default" type="submit">Apply filter</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>

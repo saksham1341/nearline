@@ -1,0 +1,15 @@
+node_modules/
+public/app.js
+.wrangler/
+coverage/
+*.log
+.dev.vars
+
+# Local agent state
+.claude/settings.local.json
+.impeccable/hook.cache.json
+.impeccable/config.local.json
+.impeccable/review/
+# Impeccable engine binaries are downloaded on first run
+.claude/skills/impeccable/scripts/bin/
+.agents/skills/impeccable/scripts/bin/

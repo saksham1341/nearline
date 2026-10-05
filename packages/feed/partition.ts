@@ -4,6 +4,7 @@ import {
   PARTITION_BASE_RESOLUTION,
   PARTITION_DUAL_READ_MS,
   PARTITION_MAX_RESOLUTION,
+  PARTITION_RETIRED_MAX_MS,
   SPLIT_READS_PER_MINUTE,
   SPLIT_SUSTAINED_MINUTES,
   SPLIT_WRITES_PER_MINUTE,
@@ -17,9 +18,11 @@ export interface SplitEntry {
 /** Cells listed here are split into their children. Everything else is served at the base resolution. */
 export interface PartitionMap {
   splits: Record<string, SplitEntry>;
+  /** Retired partitions that reported themselves empty, with when they did. */
+  drained: Record<string, number>;
 }
 
-export const EMPTY_PARTITION_MAP: PartitionMap = { splits: {} };
+export const EMPTY_PARTITION_MAP: PartitionMap = { splits: {}, drained: {} };
 
 export interface PartitionLookup {
   /** Where new refs for this cell go. */
@@ -29,9 +32,10 @@ export interface PartitionLookup {
 }
 
 /**
- * Walks down from the base resolution through split cells. Because every ref expires within
- * 15 minutes of its last update, repartitioning needs no migration: during the dual-read window
- * readers also read the partition being drained, and writers use only the new one.
+ * Walks down from the base resolution through split cells. Repartitioning needs no migration:
+ * writers use only the new partition, and readers keep reading the retired one until it reports
+ * itself drained. Refs of an active thread keep being refreshed where they are, so a fixed window
+ * would hide live threads; the drain report (or a 24-hour cap) ends the dual read instead.
  */
 export function partitionFor(cell: string, map: PartitionMap, now: number): PartitionLookup {
   const cellResolution = resolutionOf(cell);
@@ -42,14 +46,22 @@ export function partitionFor(cell: string, map: PartitionMap, now: number): Part
     if (!entry) break;
     const child = parentAt(cell, resolutionOf(current) + 1);
     if (entry.mergedAt !== undefined && entry.mergedAt <= now) {
-      if (now - entry.mergedAt < PARTITION_DUAL_READ_MS) read.add(child);
+      if (stillDraining(child, entry.mergedAt, map, now)) read.add(child);
       break;
     }
-    if (now - entry.splitAt < PARTITION_DUAL_READ_MS) read.add(current);
+    if (stillDraining(current, entry.splitAt, map, now)) read.add(current);
     current = child;
   }
   read.add(current);
   return { write: current, read: [...read] };
+}
+
+function stillDraining(cell: string, retiredAt: number, map: PartitionMap, now: number): boolean {
+  const age = now - retiredAt;
+  if (age < PARTITION_DUAL_READ_MS) return true;
+  const drainedAt = map.drained[cell];
+  const drained = drainedAt !== undefined && drainedAt >= retiredAt;
+  return !drained && age < PARTITION_RETIRED_MAX_MS;
 }
 
 export function regionPartitions(cells: readonly string[], map: PartitionMap, now: number): string[] {

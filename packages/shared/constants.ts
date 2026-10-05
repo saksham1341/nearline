@@ -41,6 +41,8 @@ export const USER_STATE_RETENTION_MS = 24 * 60 * 60_000;
 export const PARTITION_BASE_RESOLUTION = 7;
 export const PARTITION_MAX_RESOLUTION = 9;
 export const PARTITION_DUAL_READ_MS = 16 * 60_000;
+/** A retired partition is read until it reports drained; this caps how long that can take. */
+export const PARTITION_RETIRED_MAX_MS = 24 * 60 * 60_000;
 export const PARTITION_MAP_CACHE_MS = 30_000;
 export const SPLIT_WRITES_PER_MINUTE = 600;
 export const SPLIT_READS_PER_MINUTE = 30_000;

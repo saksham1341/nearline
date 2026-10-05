@@ -9,7 +9,7 @@ import {
   shouldSplit,
   type LoadSample,
 } from "../packages/feed/partition.ts";
-import { PARTITION_DUAL_READ_MS, SPLIT_WRITES_PER_MINUTE, SPLIT_READS_PER_MINUTE } from "../packages/shared/constants.ts";
+import { PARTITION_DUAL_READ_MS, PARTITION_RETIRED_MAX_MS, SPLIT_WRITES_PER_MINUTE, SPLIT_READS_PER_MINUTE } from "../packages/shared/constants.ts";
 
 const london = latLngToCanonicalLocation(51.5074, -0.1278);
 const r7 = parentAt(london, 7);
@@ -21,29 +21,30 @@ describe("partition lookup", () => {
     expect(partitionFor(london, EMPTY_PARTITION_MAP, 0)).toEqual({ write: r7, read: [r7] });
   });
 
-  it("descends through settled splits", () => {
-    const map = { splits: { [r7]: { splitAt: 0 } } };
+  it("descends through settled splits once the old partition has drained", () => {
+    const map = { splits: { [r7]: { splitAt: 0 } }, drained: { [r7]: 60_000 } };
     expect(partitionFor(london, map, PARTITION_DUAL_READ_MS)).toEqual({ write: r8, read: [r8] });
   });
 
   it("reads the old partition too while it drains", () => {
-    const map = { splits: { [r7]: { splitAt: 1_000 } } };
+    const map = { splits: { [r7]: { splitAt: 1_000 } }, drained: {} };
     const lookup = partitionFor(london, map, 2_000);
     expect(lookup.write).toBe(r8);
     expect(lookup.read.sort()).toEqual([r7, r8].sort());
   });
 
   it("never descends past resolution 9 or below the cell itself", () => {
-    const map = { splits: { [r7]: { splitAt: 0 }, [r8]: { splitAt: 0 }, [r9]: { splitAt: 0 } } };
+    const map = { splits: { [r7]: { splitAt: 0 }, [r8]: { splitAt: 0 }, [r9]: { splitAt: 0 } }, drained: { [r7]: 1, [r8]: 1, [r9]: 1 } };
     expect(partitionFor(london, map, PARTITION_DUAL_READ_MS).write).toBe(r9);
     expect(partitionFor(r8, map, PARTITION_DUAL_READ_MS).write).toBe(r8);
   });
 
   it("writes to the parent after a merge and keeps reading the drained child", () => {
-    const map = { splits: { [r7]: { splitAt: 0, mergedAt: 5_000 } } };
+    const map = { splits: { [r7]: { splitAt: 0, mergedAt: 5_000 } }, drained: {} as Record<string, number> };
     const during = partitionFor(london, map, 6_000);
     expect(during.write).toBe(r7);
     expect(during.read.sort()).toEqual([r7, r8].sort());
+    map.drained[r8] = 5_000 + 60_000;
     expect(partitionFor(london, map, 5_000 + PARTITION_DUAL_READ_MS)).toEqual({ write: r7, read: [r7] });
   });
 
@@ -54,6 +55,26 @@ describe("partition lookup", () => {
     expect(partitions.length).toBeLessThanOrEqual(7);
     expect(partitions).toContain(r7);
     expect(new Set(partitions).size).toBe(partitions.length);
+  });
+});
+
+describe("retired partitions", () => {
+  it("keeps reading a split partition until it reports drained, however long that takes", () => {
+    const later = 2 * PARTITION_DUAL_READ_MS;
+    const map = { splits: { [r7]: { splitAt: 0 } }, drained: {} as Record<string, number> };
+    expect(partitionFor(london, map, later).read.sort()).toEqual([r7, r8].sort());
+    map.drained[r7] = later - 1;
+    expect(partitionFor(london, map, later).read).toEqual([r8]);
+  });
+
+  it("ignores a drain reported before the partition was retired", () => {
+    const map = { splits: { [r7]: { splitAt: 10_000 } }, drained: { [r7]: 5_000 } };
+    expect(partitionFor(london, map, 2 * PARTITION_DUAL_READ_MS).read.sort()).toEqual([r7, r8].sort());
+  });
+
+  it("stops reading a retired partition after the safety cap", () => {
+    const map = { splits: { [r7]: { splitAt: 0 } }, drained: {} };
+    expect(partitionFor(london, map, PARTITION_RETIRED_MAX_MS).read).toEqual([r8]);
   });
 });
 

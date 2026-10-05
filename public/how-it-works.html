@@ -289,7 +289,7 @@
             </svg>
             <figcaption>A busy area becomes seven areas, each with its own index and its own share of the work.</figcaption>
           </figure>
-          <p>Splitting normally means moving data, which is slow and risky. Nearline avoids it entirely because nothing lives longer than fifteen minutes after its last update. After a split, new references go to the new areas, while readers check both the old and the new areas for sixteen minutes. By then everything in the old area has expired on its own.</p>
+          <p>Splitting normally means moving data, which is slow and risky. Nearline avoids it entirely. After a split, new references go to the new areas, while readers keep checking the old area too. Everything in it fades on its own once its threads go quiet; when the old area finally holds nothing, it reports itself drained and readers stop checking it. A busy thread can keep the old area alive for a while, and that is fine: it is never hidden in the meantime.</p>
           <h3>Sign-in without a database lookup</h3>
           <p>Checking a database on every poll would make the account database the bottleneck. Instead, each sign-in also issues a <strong>signed access token</strong> valid for an hour. The Edge Worker verifies its signature mathematically, with no lookup. Once an hour, a longer-lived session in D1 is checked and a new token issued.</p>
           <h3>Keeping data near its people</h3>

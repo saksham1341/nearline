@@ -6,7 +6,7 @@ import type { CellEvent } from "../events.ts";
 import type { CellIndexApi } from "../services.ts";
 import { CellIndexDb, type HasRefQuery, type RefPage, type RefQuery } from "../stores/cell-index-db.ts";
 import { durableSql } from "../stores/sql.ts";
-import { maintainPartition } from "./partition-maintenance.ts";
+import { maintainPartition, markDrained } from "./partition-maintenance.ts";
 
 const ALARM_INTERVAL_MS = 60_000;
 
@@ -42,6 +42,7 @@ export class CellIndex extends DurableObject<Env> implements CellIndexApi {
     this.db.sweep(now);
     try {
       await maintainPartition(this.db, this.env.PARTITION_MAP, now);
+      await markDrained(this.db, this.env.PARTITION_MAP, now);
     } catch (error) {
       // Partition tuning is best-effort; sweeping must keep running.
       console.warn("Partition maintenance failed", error);

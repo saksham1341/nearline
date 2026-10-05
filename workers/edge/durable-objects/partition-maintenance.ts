@@ -3,7 +3,7 @@ import { childrenOf, parentAt, resolutionOf } from "../../../packages/geo/index.
 import {
   MERGE_QUIET_MINUTES,
   PARTITION_BASE_RESOLUTION,
-  PARTITION_DUAL_READ_MS,
+  PARTITION_RETIRED_MAX_MS,
 } from "../../../packages/shared/constants.ts";
 import type { CellIndexDb } from "../stores/cell-index-db.ts";
 
@@ -56,8 +56,34 @@ export async function maintainPartition(
   if (busy.some((value) => value !== null)) return "idle";
   await kv.put(`split:${parent}`, "", {
     metadata: { splitAt: entry.splitAt, mergedAt: now } satisfies SplitEntry,
-    // The merged entry is needed only for the dual-read window; KV then deletes it.
-    expirationTtl: Math.ceil(PARTITION_DUAL_READ_MS / 1_000) + 120,
+    // Kept while children may still be drained; KV deletes it after the retired-partition cap.
+    expirationTtl: Math.ceil(PARTITION_RETIRED_MAX_MS / 1_000) + 120,
   });
   return "merged";
+}
+
+/**
+ * A retired partition (one that was split, or a child merged back into its parent) reports itself
+ * drained once it holds nothing, so readers can stop reading it.
+ */
+export async function markDrained(
+  db: Pick<CellIndexDb, "partition" | "isEmpty">,
+  kv: PartitionKv,
+  now: number,
+): Promise<boolean> {
+  const partition = db.partition();
+  if (!partition || !db.isEmpty()) return false;
+  const own = (await kv.getWithMetadata<SplitEntry>(`split:${partition}`)).metadata;
+  let retired = own !== null && own.mergedAt === undefined;
+  const resolution = resolutionOf(partition);
+  if (!retired && resolution > PARTITION_BASE_RESOLUTION) {
+    const parent = (await kv.getWithMetadata<SplitEntry>(`split:${parentAt(partition, resolution - 1)}`)).metadata;
+    retired = parent?.mergedAt !== undefined;
+  }
+  if (!retired) return false;
+  await kv.put(`drain:${partition}`, "", {
+    metadata: { drainedAt: now },
+    expirationTtl: Math.ceil(PARTITION_RETIRED_MAX_MS / 1_000) + 120,
+  });
+  return true;
 }

@@ -40,12 +40,18 @@ function limiter(env: Env, kind: LimitKind): RateLimit {
 async function loadPartitionMap(kv: KVNamespace, now: number): Promise<PartitionMap> {
   if (partitionCache && now - partitionCache.loadedAt < PARTITION_MAP_CACHE_MS) return partitionCache.map;
   const splits: Record<string, SplitEntry> = {};
-  let cursor: string | undefined;
-  do {
-    const page = await kv.list<SplitEntry>({ prefix: "split:", cursor });
-    for (const key of page.keys) if (key.metadata) splits[key.name.slice("split:".length)] = key.metadata;
-    cursor = page.list_complete ? undefined : page.cursor;
-  } while (cursor);
-  partitionCache = { map: { splits }, loadedAt: now };
+  const drained: Record<string, number> = {};
+  for (const [prefix, record] of [
+    ["split:", (cell: string, metadata: unknown) => { splits[cell] = metadata as SplitEntry; }],
+    ["drain:", (cell: string, metadata: unknown) => { drained[cell] = (metadata as { drainedAt: number }).drainedAt; }],
+  ] as const) {
+    let cursor: string | undefined;
+    do {
+      const page = await kv.list<unknown>({ prefix, cursor });
+      for (const key of page.keys) if (key.metadata) record(key.name.slice(prefix.length), key.metadata);
+      cursor = page.list_complete ? undefined : page.cursor;
+    } while (cursor);
+  }
+  partitionCache = { map: { splits, drained }, loadedAt: now };
   return partitionCache.map;
 }

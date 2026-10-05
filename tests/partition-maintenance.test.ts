@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { childrenOf, latLngToCanonicalLocation, parentAt } from "../packages/geo/index.ts";
 import type { LoadSample, SplitEntry } from "../packages/feed/partition.ts";
 import { MERGE_QUIET_MINUTES, SPLIT_WRITES_PER_MINUTE } from "../packages/shared/constants.ts";
-import { maintainPartition, type PartitionKv } from "../workers/edge/durable-objects/partition-maintenance.ts";
+import { maintainPartition, markDrained, type PartitionKv } from "../workers/edge/durable-objects/partition-maintenance.ts";
 
 const london = latLngToCanonicalLocation(51.5074, -0.1278);
 const r7 = parentAt(london, 7);
@@ -60,5 +60,20 @@ describe("partition maintenance", () => {
     const { kv } = fakeKv();
     expect(await maintainPartition(db(null, []), kv, NOW)).toBe("idle");
     expect(await maintainPartition(db(r7, []), kv, NOW)).toBe("idle");
+  });
+
+  it("reports a split partition as drained once it is empty", async () => {
+    const { kv, store } = fakeKv({ [`split:${r7}`]: { value: "", metadata: { splitAt: 1 } } });
+    expect(await markDrained({ partition: () => r7, isEmpty: () => false }, kv, NOW)).toBe(false);
+    expect(await markDrained({ partition: () => r7, isEmpty: () => true }, kv, NOW)).toBe(true);
+    expect(store.get(`drain:${r7}`)?.metadata).toEqual({ drainedAt: NOW });
+  });
+
+  it("reports a merged-away child as drained, and ignores partitions still in use", async () => {
+    const merged = fakeKv({ [`split:${r7}`]: { value: "", metadata: { splitAt: 1, mergedAt: 2 } } });
+    expect(await markDrained({ partition: () => r8, isEmpty: () => true }, merged.kv, NOW)).toBe(true);
+    const active = fakeKv({ [`split:${r7}`]: { value: "", metadata: { splitAt: 1 } } });
+    expect(await markDrained({ partition: () => r8, isEmpty: () => true }, active.kv, NOW)).toBe(false);
+    expect(active.store.has(`drain:${r8}`)).toBe(false);
   });
 });

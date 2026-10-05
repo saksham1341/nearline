@@ -113,7 +113,7 @@ The initial map splits nothing below resolution 7: every area starts at resoluti
 
 - Each cell index counts its writes and reads per minute. When either exceeds its threshold (constants, initially 600 writes/min or 30,000 reads/min) for 5 consecutive minutes and its resolution is below 9, it adds itself to the partition map with `splitAt = now`.
 - When a split cell's children have stayed below a quarter of the thresholds for 30 minutes, the parent's entry is removed with `mergedAt = now`.
-- Because every ref expires within 15 minutes of its last update, repartitioning needs no data migration. For 16 minutes after a `splitAt` or `mergedAt`, readers read both the old and the new partitions and writers write only to the new one. After that the old partition has drained.
+- Repartitioning needs no data migration. Writers write only to the new partition. Readers read both the old and the new partitions until the old one reports itself drained (a `drain:<cell>` KV key written by its own alarm once it holds no refs), with a 16-minute minimum and a 24-hour cap. (Revised 2026-10-05: a fixed 16-minute window hid threads that stayed active past it, because their refs keep being refreshed in the old partition.)
 - The map is versioned. Workers cache it for 30 seconds; the 16-minute dual-read window covers KV propagation delay.
 
 ## 7. Storage

@@ -259,7 +259,11 @@ h1, h2, p { margin: 0; }
 }
 .post > * { grid-column: 2; }
 /* The author's colour dot, standing in for an avatar. */
-.post::before { content: ""; grid-column: 1; grid-row: 1 / span 6; width: 40px; height: 40px; border-radius: 50%; background: var(--pin, var(--pin-7)); }
+.post::before {
+  content: attr(data-mark); grid-column: 1; grid-row: 1 / span 6; width: 40px; height: 40px; display: grid; place-items: center;
+  border-radius: 50%; background: var(--pin, var(--pin-7)); color: #ffffff;
+  font-size: var(--t-14); font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase;
+}
 .post:has(> .post-via)::before { grid-row: 2 / span 6; }
 .post.deleted::before { background: var(--surface-2); }
 .post-feed { cursor: pointer; }
@@ -293,16 +297,20 @@ h1, h2, p { margin: 0; }
 .post-action:disabled { cursor: default; }
 .action-delete { margin-left: auto; }
 
-/* Signature: the life line. It shortens with the time left and turns urgent in the last three minutes. */
-.life { margin-top: 8px; display: flex; align-items: center; gap: 8px; color: var(--ink-3); font-size: var(--t-12); font-variant-numeric: tabular-nums; }
+/* Signature: the life line. Each row's bottom edge drains as time runs out; the minutes left sit top right.
+   It turns urgent in the last three minutes. */
+.post:has(> .life) { border-bottom-color: transparent; }
+.post > .life { grid-column: auto; grid-row: auto; }
+.life { position: absolute; inset: 0; pointer-events: none; color: var(--ink-3); font-size: var(--t-12); font-variant-numeric: tabular-nums; }
 .life > span { display: none; }
 .life::before {
-  content: ""; flex: 1; height: 3px; border-radius: var(--pill);
-  background: linear-gradient(90deg, currentColor calc(var(--life, 1) * 100%), var(--surface-2) 0);
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+  background: linear-gradient(90deg, color-mix(in srgb, currentColor 70%, transparent) calc(var(--life, 1) * 100%), var(--line) 0);
 }
-.life::after { content: attr(data-left) "m left"; flex: none; min-width: 48px; text-align: right; }
+.life::after { content: attr(data-left) "m left"; position: absolute; top: 14px; right: 16px; line-height: 20px; }
 .life[data-left="0"]::after { content: "fading"; }
 .life[data-left="0"], .life[data-left="1"], .life[data-left="2"], .life[data-left="3"] { color: var(--fading); }
+.post-meta { padding-right: 72px; }
 
 /* ---------- Thread view ---------- */
 .thread-view {
@@ -324,9 +332,9 @@ h1, h2, p { margin: 0; }
 }
 .reply-tree { display: grid; margin: 0; padding: 0; list-style: none; }
 .reply-tree .reply-tree { margin-left: 36px; border-left: 2px solid var(--line); }
-.reply-tree .reply-tree .post { border-bottom: 0; }
+
 .post-reply { grid-template-columns: 32px minmax(0, 1fr); }
-.post-reply::before { width: 32px; height: 32px; }
+.post-reply::before { width: 32px; height: 32px; font-size: var(--t-12); }
 .continue-thread { margin: 4px 16px 12px 60px; min-height: 36px; padding: 0 12px; border: 0; border-radius: var(--pill); background: transparent; color: var(--ink); font-size: var(--t-14); font-weight: 700; text-align: left; }
 
 /* ---------- Composers: a frosted island floating over the bottom of the column ---------- */
@@ -441,6 +449,10 @@ textarea:focus, textarea:focus-visible { outline: none; box-shadow: none; }
   .brand { flex-direction: column; align-items: flex-start; gap: 4px; }
   .board { min-width: 0; }
   .post { padding-inline: 24px; }
+  .post > :not(.life) { max-width: 680px; }
+  /* Keep the minutes left at the edge of the reading width, not the far side of the screen. */
+  .life::after { right: auto; left: min(calc(100% - 24px), 756px); transform: translateX(-100%); white-space: nowrap; }
+  .feed-tabs { grid-template-columns: repeat(2, 160px); padding-left: 8px; }
   :root.room-active .board { border-top: 3px solid var(--private); }
   .board-head { position: relative; }
   .board-title { display: block; padding: 20px 24px 4px; font-size: var(--t-20); font-weight: 800; letter-spacing: -0.01em; }

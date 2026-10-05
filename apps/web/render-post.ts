@@ -76,6 +76,7 @@ export function renderPostCard(options: PostCardOptions): HTMLElement {
   article.style.setProperty("--stud", authorColor(post.author));
   const look = authorStyle(post.author);
   article.dataset.paper = String(post.deleted ? 7 : look.paper);
+  article.dataset.mark = post.deleted ? "" : post.author.slice(0, 2);
   article.style.setProperty("--tilt", `${look.tilt}deg`);
   if (variant === "feed") {
     article.dataset.action = "open";

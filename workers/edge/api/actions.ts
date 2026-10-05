@@ -36,7 +36,9 @@ export async function handleAction(request: Request, ctx: ApiContext): Promise<R
   }
   if (action.type === "reply" || action.type === "like" || action.type === "repost") {
     if (!await isVisible(action.threadId, action.cell, action.scope, action.room, ctx)) {
-      return respond({ ok: false, code: "NOT_VISIBLE" });
+      // Say "faded" rather than "out of range" when the thread itself is gone. Only failures pay for this lookup.
+      const known = await ctx.services.thread(action.threadId).summary(ctx.now);
+      return respond(known.ok ? { ok: false, code: "NOT_VISIBLE" } : known);
     }
   }
 

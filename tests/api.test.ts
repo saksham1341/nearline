@@ -131,7 +131,7 @@ describe("feed API", () => {
     expect(await feedItems(fake, alice, later, root)).toEqual([]);
     expect((await thread(fake, alice, later, id)).status).toBe(410);
     const liked = await act(fake, alice, later, { type: "like", ...viewer(root), threadId: id, postId: id, on: true });
-    expect(liked.body).toMatchObject({ ok: false, code: "NOT_VISIBLE" });
+    expect(liked).toMatchObject({ status: 410, body: { ok: false, code: "THREAD_EXPIRED" } });
   });
 
   it("rejects actions on threads out of range, empty posts, and malformed bodies", async () => {

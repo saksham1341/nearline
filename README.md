@@ -19,7 +19,7 @@ npm run build
 Running the Worker locally needs a `.dev.vars` file:
 
 ```
-SESSION_KEY=any-long-random-string
+SESSION_KEY=replace-with-at-least-32-random-characters
 RP_ID=localhost
 ORIGIN=http://localhost:8787
 ```

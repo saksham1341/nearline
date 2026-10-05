@@ -15,12 +15,12 @@ function db() {
 describe("user state", () => {
   it("dedupes likes and reports the first like in a thread", () => {
     const store = db();
-    expect(store.like({ userId: "u1", postId: thread, threadId: thread, on: true, now: 1 })).toEqual({ changed: true, first: true });
-    expect(store.like({ userId: "u1", postId: thread, threadId: thread, on: true, now: 2 })).toEqual({ changed: false, first: false });
-    expect(store.like({ userId: "u1", postId: reply, threadId: thread, on: true, now: 3 })).toEqual({ changed: true, first: false });
-    expect(store.like({ userId: "u1", postId: thread, threadId: thread, on: false, now: 4 })).toEqual({ changed: true, first: false });
-    expect(store.like({ userId: "u1", postId: thread, threadId: thread, on: false, now: 5 })).toEqual({ changed: false, first: false });
-    expect(store.like({ userId: "u1", postId: thread, threadId: thread, on: true, now: 6 })).toEqual({ changed: true, first: false });
+    expect(store.like({ userId: "u1", postId: thread, threadId: thread, on: true, now: 1 })).toMatchObject({ changed: true, first: true });
+    expect(store.like({ userId: "u1", postId: thread, threadId: thread, on: true, now: 2 })).toMatchObject({ changed: false, first: false });
+    expect(store.like({ userId: "u1", postId: reply, threadId: thread, on: true, now: 3 })).toMatchObject({ changed: true, first: false });
+    expect(store.like({ userId: "u1", postId: thread, threadId: thread, on: false, now: 4 })).toMatchObject({ changed: true, first: false });
+    expect(store.like({ userId: "u1", postId: thread, threadId: thread, on: false, now: 5 })).toMatchObject({ changed: false, first: false });
+    expect(store.like({ userId: "u1", postId: thread, threadId: thread, on: true, now: 6 })).toMatchObject({ changed: true, first: false });
   });
 
   it("allows one repost per user per thread", () => {
@@ -53,5 +53,21 @@ describe("user state", () => {
     const name = await userStateName("user-1");
     expect(name).toMatch(/^u:[0-9a-f]{4}$/u);
     expect(await userStateName("user-1")).toBe(name);
+  });
+
+  it("reports which thread an unlike belongs to, whatever thread the client names", () => {
+    const store = db();
+    const other = "00000000-0000-7000-8000-0000000000aa";
+    store.like({ userId: "u1", postId: reply, threadId: thread, on: true, now: 1 });
+    expect(store.like({ userId: "u1", postId: reply, threadId: other, on: false, now: 2 }))
+      .toEqual({ changed: true, first: false, threadId: thread });
+  });
+
+  it("refuses a like that names a different thread than the one already recorded", () => {
+    const store = db();
+    const other = "00000000-0000-7000-8000-0000000000aa";
+    store.like({ userId: "u1", postId: reply, threadId: thread, on: true, now: 1 });
+    store.like({ userId: "u1", postId: reply, threadId: thread, on: false, now: 2 });
+    expect(store.like({ userId: "u1", postId: reply, threadId: other, on: true, now: 3 }).changed).toBe(true);
   });
 });

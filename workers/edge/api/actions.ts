@@ -65,7 +65,7 @@ export async function handleAction(request: Request, ctx: ApiContext): Promise<R
       const result = await state.like({ userId: ctx.user.id, postId: action.postId, threadId: action.threadId, on: action.on, now });
       if (result.changed) {
         await ctx.services.sendEvents([{
-          eventId: uuidv7(now), type: "thread.liked", threadId: action.threadId, postId: action.postId,
+          eventId: uuidv7(now), type: "thread.liked", threadId: result.threadId, postId: action.postId,
           userId: ctx.user.id, delta: action.on ? 1 : -1, first: result.first, at: now,
         }]);
       }

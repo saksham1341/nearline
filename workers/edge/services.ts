@@ -27,7 +27,7 @@ export interface CellIndexApi {
 }
 
 export interface UserStateApi {
-  like(input: LikeInput): Promise<{ changed: boolean; first: boolean }>;
+  like(input: LikeInput): Promise<{ changed: boolean; first: boolean; threadId: string }>;
   repost(input: RepostInput): Promise<{ ok: boolean; first: boolean }>;
   engagement(userId: string, threadIds: string[]): Promise<EngagementResponse>;
 }

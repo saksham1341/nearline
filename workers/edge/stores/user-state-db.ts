@@ -41,20 +41,27 @@ export class UserStateDb {
     runAll(this.sql, SCHEMA);
   }
 
-  like(input: LikeInput): { changed: boolean; first: boolean } {
+  /**
+   * `threadId` in the result is the thread the like is recorded under, never the one the client named
+   * on an unlike: otherwise liking under one thread and unliking under another would leave a +1 that
+   * is never taken back.
+   */
+  like(input: LikeInput): { changed: boolean; first: boolean; threadId: string } {
     if (!input.on) {
-      const removed = this.sql.exec(
-        "DELETE FROM likes WHERE user_id = ? AND post_id = ? RETURNING post_id",
+      const removed = this.sql.exec<{ thread_id: string }>(
+        "DELETE FROM likes WHERE user_id = ? AND post_id = ? RETURNING thread_id",
         input.userId, input.postId,
-      ).toArray().length > 0;
-      return { changed: removed, first: false };
+      ).toArray()[0];
+      return removed
+        ? { changed: true, first: false, threadId: removed.thread_id }
+        : { changed: false, first: false, threadId: input.threadId };
     }
     const inserted = this.sql.exec(
       "INSERT INTO likes (user_id, post_id, thread_id, at) VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING RETURNING post_id",
       input.userId, input.postId, input.threadId, input.now,
     ).toArray().length > 0;
-    if (!inserted) return { changed: false, first: false };
-    return { changed: true, first: this.firstEngagement(input.userId, input.threadId, "like", input.now) };
+    if (!inserted) return { changed: false, first: false, threadId: input.threadId };
+    return { changed: true, first: this.firstEngagement(input.userId, input.threadId, "like", input.now), threadId: input.threadId };
   }
 
   repost(input: RepostInput): { ok: boolean; first: boolean } {

@@ -151,4 +151,17 @@ describe("feed API", () => {
     const response = await handleFeed(url, new Request(url), { services: fake.services, user: alice, now: T });
     expect(response.status).toBe(400);
   });
+
+  it("cannot inflate a like count by unliking under a different thread", async () => {
+    const fake = createFakeServices();
+    const target = await postFromRoot(fake, "target");
+    const decoy = await postFromRoot(fake, "decoy");
+    for (let i = 0; i < 5; i += 1) {
+      await act(fake, alice, T + 1, { type: "like", ...viewer(root), threadId: target, postId: target, on: true });
+      await act(fake, alice, T + 1, { type: "like", ...viewer(root), threadId: decoy, postId: target, on: false });
+      await fake.drain(T + 1);
+    }
+    const summary = await fake.services.thread(target).summary(T + 2);
+    expect(summary).toMatchObject({ ok: true, summary: { likeCount: 0 } });
+  });
 });

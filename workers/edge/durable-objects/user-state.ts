@@ -17,7 +17,7 @@ export class UserState extends DurableObject<Env> implements UserStateApi {
     this.db.init();
   }
 
-  async like(input: LikeInput): Promise<{ changed: boolean; first: boolean }> {
+  async like(input: LikeInput): Promise<{ changed: boolean; first: boolean; threadId: string }> {
     const result = this.db.like(input);
     await this.ensureAlarm();
     return result;

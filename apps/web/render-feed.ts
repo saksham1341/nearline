@@ -60,7 +60,9 @@ export function refreshTimes(root: ParentNode, now: number): void {
   for (const life of root.querySelectorAll<HTMLElement>(".life[data-expires-at]")) {
     const remainingMs = Number(life.dataset.expiresAt) - now;
     const remaining = Math.max(0, Math.min(1, remainingMs / THREAD_TTL_MS));
+    // On the post as well as the line, so a theme can draw the timer anywhere on the card.
     life.style.setProperty("--life", remaining.toFixed(4));
+    life.parentElement?.style.setProperty("--life", remaining.toFixed(4));
     // Whole minutes left, one tick each; ticks beyond that are spent (a theme may tear them off).
     const left = Math.max(0, Math.min(LIFE_TICKS, Math.ceil(remainingMs / 60_000)));
     if (life.dataset.left === String(left)) continue;

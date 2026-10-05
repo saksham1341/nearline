@@ -22,7 +22,7 @@ npm run build
 npm run preview          # http://localhost:8788
 ```
 
-Serves the real web client against a fake in-page API (`dev/preview/mock-api.js`) with a fixed location and a signed-in user. Posting, replying, liking, reposting and deleting work in memory. `app.js` rebuilds on every change under `apps/` and `packages/`; reload the page to see HTML and CSS edits. Add `#gate` to the URL for the sign-in screen, `#empty` for an empty feed.
+Serves the real web client against a fake in-page API (`dev/preview/mock-api.js`) with a fixed location and a signed-in user. Posting, replying, liking, reposting and deleting work in memory. `app.js` rebuilds on every change under `apps/` and `packages/`; reload the page to see HTML and CSS edits. Add `#gate` to the URL for the sign-in screen, `#empty` for an empty feed, `#thread` to open the first thread.
 
 ### Full Worker
 

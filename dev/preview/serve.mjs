@@ -54,5 +54,6 @@ server.listen(port, () => {
   console.log(`\nNearline preview: http://localhost:${port}`);
   console.log(`  signed out:    http://localhost:${port}/#gate`);
   console.log(`  empty feed:    http://localhost:${port}/#empty`);
+  console.log(`  open thread:   http://localhost:${port}/#thread`);
   console.log("  fake API, fixed location; posts, replies, likes, reposts and deletes work in memory.\n");
 });

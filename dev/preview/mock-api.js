@@ -3,6 +3,7 @@
 //
 // URL hash switches:  #gate   signed out (sign-in screen)
 //                     #empty  signed in, nothing nearby
+//                     #thread open the first thread once the feed loads
 (() => {
   const MIN = 60_000;
   const TTL = 15 * MIN;
@@ -186,5 +187,13 @@
       clearWatch() {},
     },
   });
-  console.info("[preview] Fake Nearline API active. Hash switches: #gate, #empty.");
+  if (location.hash.includes("thread")) {
+    const open = setInterval(() => {
+      const first = document.querySelector("#feed-list article");
+      if (!first) return;
+      clearInterval(open);
+      first.click();
+    }, 100);
+  }
+  console.info("[preview] Fake Nearline API active. Hash switches: #gate, #empty, #thread.");
 })();

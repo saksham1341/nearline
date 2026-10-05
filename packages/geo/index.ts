@@ -9,7 +9,6 @@ import {
 } from "h3-js";
 import {
   LOCATION_RESOLUTION,
-  SHARD_RESOLUTION,
   type ProximityScope,
 } from "../shared/constants.ts";
 
@@ -23,11 +22,6 @@ export function latLngToCanonicalLocation(latitude: number, longitude: number): 
   return latLngToCell(latitude, longitude, LOCATION_RESOLUTION);
 }
 
-export function locationToShard(location: string): string {
-  assertCanonicalLocation(location);
-  return cellToParent(location, SHARD_RESOLUTION);
-}
-
 export function locationToScopeCell(location: string, scope: ProximityScope): string {
   assertCanonicalLocation(location);
   return cellToParent(location, scope);
@@ -35,27 +29,6 @@ export function locationToScopeCell(location: string, scope: ProximityScope): st
 
 export function cellsVisibleFrom(location: string, scope: ProximityScope): string[] {
   return gridDisk(locationToScopeCell(location, scope), 1);
-}
-
-export type MessageReach = Readonly<Record<ProximityScope, ReadonlySet<string>>>;
-
-/**
- * The scope cells whose viewers can see a message, for every scope.
- * Neighbourhoods are symmetric: a viewer's scope cell lies in the message cell's
- * one-ring exactly when the message cell lies in the viewer's one-ring.
- */
-export function messageReach(messageLocation: string): MessageReach {
-  assertCanonicalLocation(messageLocation);
-  return {
-    9: scopeReach(messageLocation, 9),
-    10: scopeReach(messageLocation, 10),
-    11: scopeReach(messageLocation, 11),
-  };
-}
-
-/** Viewer locations must already be canonical; callers validate them when they are stored. */
-export function reachIncludes(reach: MessageReach, viewerLocation: string, scope: ProximityScope): boolean {
-  return reach[scope].has(cellToParent(viewerLocation, scope));
 }
 
 export function messageVisibleTo(messageLocation: string, viewerLocation: string, scope: ProximityScope): boolean {
@@ -66,17 +39,6 @@ export function messageVisibleTo(messageLocation: string, viewerLocation: string
 
 function scopeReach(location: string, scope: ProximityScope): Set<string> {
   return new Set(gridDisk(cellToParent(location, scope), 1));
-}
-
-export function candidateShardsForMessage(location: string): Set<string> {
-  assertCanonicalLocation(location);
-  const result = new Set<string>();
-  for (const scope of [9, 10, 11] as const) {
-    for (const cell of gridDisk(cellToParent(location, scope), 1)) {
-      result.add(cellToParent(cell, SHARD_RESOLUTION));
-    }
-  }
-  return result;
 }
 
 export function canonicalLocationCenter(location: string): { latitude: number; longitude: number } {

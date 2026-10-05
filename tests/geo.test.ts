@@ -1,15 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { cellToParent, getPentagons, gridDisk } from "h3-js";
 import {
-  candidateShardsForMessage,
   cellsVisibleFrom,
   isCanonicalLocation,
   latLngToCanonicalLocation,
   locationToScopeCell,
-  locationToShard,
-  messageReach,
   messageVisibleTo,
-  reachIncludes,
 } from "../packages/geo/index.ts";
 
 describe("canonical geography", () => {
@@ -19,11 +15,6 @@ describe("canonical geography", () => {
     expect(isCanonicalLocation(london)).toBe(true);
     expect(isCanonicalLocation(cellToParent(london, 10))).toBe(false);
     expect(() => latLngToCanonicalLocation(91, 0)).toThrow(RangeError);
-  });
-
-  it("assigns every location to exactly one resolution-5 home shard", () => {
-    expect(locationToShard(london)).toBe(cellToParent(london, 5));
-    expect(locationToShard(london)).toHaveLength(15);
   });
 
   it.each([9, 10, 11] as const)("uses the viewer's r%s seven-cell neighborhood", (scope) => {
@@ -43,25 +34,10 @@ describe("canonical geography", () => {
     expect(messageVisibleTo(distant, london, 11)).toBe(false);
   });
 
-  it("includes the home shard in fanout candidates", () => {
-    const home = locationToShard(london);
-    expect(candidateShardsForMessage(london)).toContain(home);
-  });
-
   it("delegates pentagon neighborhoods to H3", () => {
     const pentagonR11 = cellToParent(getPentagons(11)[0]!, 11);
     expect(isCanonicalLocation(pentagonR11)).toBe(true);
     expect(() => cellsVisibleFrom(pentagonR11, 11)).not.toThrow();
   });
 
-  it("precomputed message reach agrees with the per-viewer visibility check", () => {
-    const message = latLngToCanonicalLocation(51.5074, -0.1278);
-    const reach = messageReach(message);
-    for (let i = 0; i < 400; i += 1) {
-      const viewer = latLngToCanonicalLocation(51.5074 + (i % 20 - 10) * 0.0009, -0.1278 + (Math.floor(i / 20) - 10) * 0.0014);
-      for (const scope of [9, 10, 11] as const) {
-        expect(reachIncludes(reach, viewer, scope)).toBe(messageVisibleTo(message, viewer, scope));
-      }
-    }
-  });
 });

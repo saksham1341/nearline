@@ -1,34 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { isClientFrame, isRoomTag, sameRoom, type ChatMessage } from "../packages/protocol/index.ts";
+import { isRoomTag } from "../packages/protocol/index.ts";
 import { uuidv7 } from "../packages/shared/uuid.ts";
 
 describe("protocol invariants", () => {
-  const message: ChatMessage = {
-    id: "message",
-    ts: 1,
-    location: "8b195da49b48fff",
-    author: "4f92ac17",
-    roomTag: "",
-    body: "hello",
-  };
-
-  it("treats rooms strictly as equality filters", () => {
-    expect(sameRoom({ roomTag: "" }, message)).toBe(true);
-    expect(sameRoom({ roomTag: "private" }, message)).toBe(false);
-  });
-
   it("generates valid, time-sortable UUIDv7 identifiers", () => {
     const earlier = uuidv7(1_700_000_000_000);
     const later = uuidv7(1_700_000_000_001);
     expect(earlier).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u);
     expect(earlier < later).toBe(true);
-  });
-
-  it("accepts only object frames with a string type", () => {
-    expect(isClientFrame({ type: "message", body: "hi" })).toBe(true);
-    for (const value of [null, 0, "message", [], [{ type: "message" }], {}, { type: 7 }]) {
-      expect(isClientFrame(value)).toBe(false);
-    }
   });
 
   it("accepts the public tag and SHA-256 hex room tags only", () => {

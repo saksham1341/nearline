@@ -63,6 +63,7 @@ const syncDots = Array.from(document.querySelectorAll<HTMLElement>("[data-sync-d
 const syncLabels = Array.from(document.querySelectorAll<HTMLElement>("[data-sync-label]"));
 const logoutButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-logout]"));
 const identityMenus = Array.from(document.querySelectorAll<HTMLDetailsElement>("[data-identity-menu]"));
+const themeButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-theme-choice]"));
 
 const scopeCopy: Record<ProximityScope, string> = { 11: "Close", 10: "Nearby", 9: "Wide" };
 
@@ -145,6 +146,8 @@ function bindEvents(): void {
   for (const button of tabButtons) button.addEventListener("click", () => selectTab(button.dataset.tab as FeedTab));
   for (const button of roomButtons) button.addEventListener("click", openRoomDialog);
   for (const button of logoutButtons) button.addEventListener("click", () => void logout());
+  for (const button of themeButtons) button.addEventListener("click", () => setTheme(button.dataset.themeChoice as ThemeChoice));
+  showTheme();
   document.addEventListener("click", (event) => {
     for (const menu of identityMenus) {
       if (menu.open && event.target instanceof Node && !menu.contains(event.target)) menu.open = false;
@@ -555,6 +558,29 @@ function pendingSummary(id: string, body: string, now: number): ThreadSummary {
     id, roomTag: currentRoomTag, root, replyCount: 0, likeCount: 0, repostCount: 0, participantCount: 1,
     score: 0, scoreAt: now, lastActivityAt: now, expiresAt: now + THREAD_TTL_MS, version: 0,
   };
+}
+
+// ---------- Theme ----------
+
+type ThemeChoice = "system" | "light" | "dark";
+const THEME_KEY = "nearline-theme";
+
+/** A per-device preference; "system" follows prefers-color-scheme. The page head applies it before first paint. */
+function setTheme(choice: ThemeChoice): void {
+  if (choice === "system") delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = choice;
+  try {
+    if (choice === "system") localStorage.removeItem(THEME_KEY);
+    else localStorage.setItem(THEME_KEY, choice);
+  } catch {
+    // Storage can be unavailable (private windows); the choice still holds for this page.
+  }
+  showTheme();
+}
+
+function showTheme(): void {
+  const current = document.documentElement.dataset.theme ?? "system";
+  for (const button of themeButtons) button.setAttribute("aria-pressed", String(button.dataset.themeChoice === current));
 }
 
 // ---------- Feed and thread interaction ----------

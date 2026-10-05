@@ -8,6 +8,7 @@
     <meta name="description" content="It's what's happening here: a local feed of posts from the people around you.">
     <title>Nearline</title>
     <link rel="preload" href="/fonts/archivo-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <script>try{var t=localStorage.getItem("nearline-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
     <link rel="stylesheet" href="/styles.css">
     <script type="module" src="/app.js"></script>
   </head>
@@ -50,6 +51,11 @@
               </summary>
               <div class="identity-popover">
                 <span class="identity-popover-label">Signed in with passkey</span>
+                <div class="theme-switch" role="group" aria-label="Theme">
+                  <button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+                  <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+                  <button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+                </div>
                 <a class="popover-link" href="/how-it-works.html">How Nearline works</a>
                 <button data-logout type="button">Log out</button>
               </div>

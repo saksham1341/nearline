@@ -37,12 +37,13 @@ One-time setup per environment:
 
 ```bash
 npx wrangler queues create nearline-feed-events
+npx wrangler queues create nearline-feed-events-dlq
 npx wrangler kv namespace create PARTITION_MAP        # put the id in wrangler.jsonc
 openssl rand -base64 48 | npx wrangler secret put SESSION_KEY
 npx wrangler d1 migrations apply proximity-chat-auth --remote
 ```
 
-Then `npm run deploy`. A preview Worker at `preview.nearline.sxm.li` is configured as the `preview` environment: `npm run build:web && npx wrangler deploy --env preview`.
+Then `npm run deploy`.
 
 ## Commands
 

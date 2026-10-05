@@ -303,15 +303,10 @@ h1, h2, p { margin: 0; }
 .post-action:disabled { cursor: default; }
 .action-delete { margin-left: auto; }
 
-/* The minutes left sit top right; ring and label turn urgent in the last three minutes. */
-.post > .life { grid-column: auto; grid-row: auto; }
-.life { position: absolute; inset: 0; pointer-events: none; color: var(--ink-3); font-size: var(--t-12); font-variant-numeric: tabular-nums; }
+/* The ring turns urgent in the last three minutes. The .life element only carries the timing data. */
+.life { display: none; }
 .life > span { display: none; }
-.life::after { content: attr(data-left) "m left"; position: absolute; top: 14px; right: 16px; line-height: 20px; }
-.life[data-left="0"]::after { content: "fading"; }
-.life[data-left="0"], .life[data-left="1"], .life[data-left="2"], .life[data-left="3"] { color: var(--fading); }
 .post:has(> .life:is([data-left="0"], [data-left="1"], [data-left="2"], [data-left="3"])) { --ring: var(--fading); }
-.post-meta { padding-right: 72px; }
 
 /* ---------- Thread view ---------- */
 .thread-view {
@@ -451,8 +446,6 @@ textarea:focus, textarea:focus-visible { outline: none; box-shadow: none; }
   .board { min-width: 0; }
   .post { padding-inline: 24px; }
   .post > :not(.life) { max-width: 680px; }
-  /* Keep the minutes left at the edge of the reading width, not the far side of the screen. */
-  .life::after { right: auto; left: min(calc(100% - 24px), 760px); transform: translateX(-100%); white-space: nowrap; }
   .feed-tabs { grid-template-columns: repeat(2, 160px); padding-left: 8px; }
   :root.room-active .board { border-top: 3px solid var(--private); }
   .board-head { position: relative; }

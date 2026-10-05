@@ -33,8 +33,15 @@ export default {
   },
 
   async queue(batch: MessageBatch<FeedEvent>, env: Env): Promise<void> {
+    // Retry only the messages whose target failed; the rest are acknowledged. After max_retries the
+    // queue moves a message to the dead-letter queue instead of dropping it.
     try {
-      await consumeEvents(batch.messages.map((message) => message.body), createServices(env), Date.now());
+      const failed = new Set((await consumeEvents(batch.messages.map((message) => message.body), createServices(env), Date.now()))
+        .map((event) => event.eventId));
+      for (const message of batch.messages) {
+        if (failed.has(message.body.eventId)) message.retry();
+        else message.ack();
+      }
     } catch (error) {
       console.error("Feed event batch failed; retrying", error);
       batch.retryAll();

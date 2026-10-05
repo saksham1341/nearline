@@ -2,38 +2,43 @@ import { DurableObject } from "cloudflare:workers";
 import type { DeletionOutcome } from "../../../packages/feed/tree.ts";
 import type { PostView, ThreadSummary } from "../../../packages/protocol/index.ts";
 import type { Env } from "../env.ts";
-import type { CellEvent, ThreadLikedEvent, ThreadRepostedEvent } from "../events.ts";
+import type { ThreadLikedEvent, ThreadRepostedEvent } from "../events.ts";
 import type { ThreadStoreApi } from "../services.ts";
 import type { Outcome } from "../stores/outcome.ts";
 import { durableSql } from "../stores/sql.ts";
-import { ThreadDb, type CreateThreadInput, type RemoveInput, type ReplyInput, type Result } from "../stores/thread-db.ts";
+import { ThreadDb, type CreateThreadInput, type RemoveInput, type ReplyInput } from "../stores/thread-db.ts";
+import { flushOutbox, OUTBOX_RETRY_MS } from "./flush.ts";
 
-/** One thread per object. Sends follow-on events to the queue and deletes itself when it expires. */
+/**
+ * One thread per object. Every change and the events describing it are written together; the
+ * events are then sent from the outbox, retried by alarm if the queue is unavailable. When the
+ * thread is gone and its last events are sent, the object deletes all of its storage.
+ */
 export class ThreadStore extends DurableObject<Env> implements ThreadStoreApi {
-  private readonly db: ThreadDb;
+  private db: ThreadDb;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
+    // No schema here: an id that is only ever looked up must not leave storage behind.
     this.db = new ThreadDb(durableSql(ctx.storage.sql));
-    this.db.init();
   }
 
   async create(input: CreateThreadInput): Promise<Outcome<{ summary: ThreadSummary }>> {
-    return this.finish(this.db.create(input));
+    const result = this.db.create(input);
+    await this.settle();
+    return result.outcome;
   }
 
   async reply(input: ReplyInput): Promise<Outcome<{ post: PostView; summary: ThreadSummary }>> {
-    return this.finish(this.db.reply(input));
+    const result = this.db.reply(input);
+    await this.settle();
+    return result.outcome;
   }
 
   async remove(input: RemoveInput): Promise<Outcome<{ outcome: DeletionOutcome }>> {
     const result = this.db.remove(input);
-    if (result.outcome.ok && result.outcome.outcome === "remove_thread") {
-      await this.send(result.events);
-      await this.wipe();
-      return result.outcome;
-    }
-    return this.finish(result);
+    await this.settle();
+    return result.outcome;
   }
 
   async summary(now: number): Promise<Outcome<{ summary: ThreadSummary }>> {
@@ -45,43 +50,29 @@ export class ThreadStore extends DurableObject<Env> implements ThreadStoreApi {
   }
 
   async applyLikes(events: ThreadLikedEvent[], now: number): Promise<void> {
-    await this.send(this.db.applyLikes(events, now));
-    await this.schedule();
+    this.db.applyLikes(events, now);
+    await this.settle();
   }
 
   async applyReposts(events: ThreadRepostedEvent[], now: number): Promise<void> {
-    await this.send(this.db.applyReposts(events, now));
-    await this.schedule();
+    this.db.applyReposts(events, now);
+    await this.settle();
   }
 
   async alarm(): Promise<void> {
-    const events = this.db.expireIfDue(Date.now());
-    if (events) {
-      await this.send(events);
-      await this.wipe();
+    this.db.expireIfDue(Date.now());
+    await this.settle();
+  }
+
+  /** Sends pending events, then deletes the object if it is finished, or sets the next alarm. */
+  private async settle(): Promise<void> {
+    const sent = await flushOutbox(this.db, this.env.FEED_EVENTS);
+    if (sent && this.db.isGone()) {
+      await this.ctx.storage.deleteAll();
+      this.db = new ThreadDb(durableSql(this.ctx.storage.sql));
       return;
     }
-    await this.schedule();
-  }
-
-  private async finish<T>(result: Result<T>): Promise<Outcome<T>> {
-    await this.send(result.events);
-    await this.schedule();
-    return result.outcome;
-  }
-
-  private async send(events: CellEvent[]): Promise<void> {
-    if (events.length > 0) await this.env.FEED_EVENTS.sendBatch(events.map((body) => ({ body })));
-  }
-
-  private async schedule(): Promise<void> {
-    const at = this.db.expiresAt();
-    if (at !== null) await this.ctx.storage.setAlarm(at);
-  }
-
-  /** deleteAll drops every table, so recreate them for any late call this instance still receives. */
-  private async wipe(): Promise<void> {
-    await this.ctx.storage.deleteAll();
-    this.db.init();
+    const next = sent ? this.db.expiresAt() : Date.now() + OUTBOX_RETRY_MS;
+    if (next !== null) await this.ctx.storage.setAlarm(next);
   }
 }

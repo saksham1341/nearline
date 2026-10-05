@@ -25,15 +25,15 @@ describe("user state", () => {
 
   it("allows one repost per user per thread", () => {
     const store = db();
-    expect(store.repost({ userId: "u1", threadId: thread, now: 1 })).toEqual({ ok: true, first: true });
-    expect(store.repost({ userId: "u1", threadId: thread, now: 2 })).toEqual({ ok: false, first: false });
-    expect(store.repost({ userId: "u2", threadId: thread, now: 2 })).toEqual({ ok: true, first: true });
+    expect(store.repost({ userId: "u1", threadId: thread, now: 1, location: "8b195da49b48fff", partition: "p", byAuthor: "aaaa0001" })).toEqual({ ok: true, first: true });
+    expect(store.repost({ userId: "u1", threadId: thread, now: 2, location: "8b195da49b48fff", partition: "p", byAuthor: "aaaa0001" })).toEqual({ ok: false, first: false });
+    expect(store.repost({ userId: "u2", threadId: thread, now: 2, location: "8b195da49b48fff", partition: "p", byAuthor: "aaaa0002" })).toEqual({ ok: true, first: true });
   });
 
   it("reports a user's engagement for the requested threads only", () => {
     const store = db();
     store.like({ userId: "u1", postId: reply, threadId: thread, on: true, now: 1 });
-    store.repost({ userId: "u1", threadId: thread, now: 1 });
+    store.repost({ userId: "u1", threadId: thread, now: 1, location: "8b195da49b48fff", partition: "p", byAuthor: "aaaa0001" });
     store.like({ userId: "u2", postId: thread, threadId: thread, on: true, now: 1 });
     expect(store.engagement("u1", [thread])).toEqual({ liked: [reply], reposted: [thread] });
     expect(store.engagement("u1", [])).toEqual({ liked: [], reposted: [] });
@@ -46,6 +46,9 @@ describe("user state", () => {
     expect(store.isEmpty()).toBe(false);
     store.sweep(USER_STATE_RETENTION_MS + 1);
     expect(store.engagement("u1", [thread])).toEqual({ liked: [], reposted: [] });
+    // Not empty while the like's event is still waiting to be sent.
+    expect(store.isEmpty()).toBe(false);
+    store.ackEvents(store.pendingEvents(100).map((event) => event.eventId));
     expect(store.isEmpty()).toBe(true);
   });
 
@@ -69,5 +72,27 @@ describe("user state", () => {
     store.like({ userId: "u1", postId: reply, threadId: thread, on: true, now: 1 });
     store.like({ userId: "u1", postId: reply, threadId: thread, on: false, now: 2 });
     expect(store.like({ userId: "u1", postId: reply, threadId: other, on: true, now: 3 }).changed).toBe(true);
+  });
+
+  it("queues each like change for the thread it is recorded under", () => {
+    const store = db();
+    store.like({ userId: "u1", postId: reply, threadId: thread, on: true, now: 1 });
+    store.like({ userId: "u1", postId: reply, threadId: "00000000-0000-7000-8000-0000000000aa", on: false, now: 2 });
+    store.like({ userId: "u1", postId: reply, threadId: thread, on: false, now: 3 });
+    expect(store.pendingEvents(100)).toMatchObject([
+      { type: "thread.liked", threadId: thread, postId: reply, userId: "u1", delta: 1, first: true, at: 1 },
+      { type: "thread.liked", threadId: thread, postId: reply, userId: "u1", delta: -1, first: false, at: 2 },
+    ]);
+    store.ackEvents(store.pendingEvents(100).map((event) => event.eventId));
+    expect(store.pendingEvents(100)).toEqual([]);
+  });
+
+  it("queues a repost with its anchor", () => {
+    const store = db();
+    store.repost({ userId: "u1", threadId: thread, now: 5, location: "8b195da49b48fff", partition: "p", byAuthor: "aaaa0001" });
+    store.repost({ userId: "u1", threadId: thread, now: 6, location: "8b195da49b48fff", partition: "p", byAuthor: "aaaa0001" });
+    expect(store.pendingEvents(100)).toMatchObject([
+      { type: "thread.reposted", threadId: thread, userId: "u1", first: true, location: "8b195da49b48fff", partition: "p", byAuthor: "aaaa0001", at: 5 },
+    ]);
   });
 });

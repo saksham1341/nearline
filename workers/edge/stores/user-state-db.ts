@@ -1,6 +1,9 @@
 import type { EngagementResponse } from "../../../packages/protocol/index.ts";
 import { USER_STATE_RETENTION_MS } from "../../../packages/shared/constants.ts";
 import { bytesToHex, sha256 } from "../../../packages/shared/encoding.ts";
+import { uuidv7 } from "../../../packages/shared/uuid.ts";
+import type { FeedEvent } from "../events.ts";
+import { Outbox, OUTBOX_SCHEMA } from "./outbox.ts";
 import { runAll, type SqlRunner } from "./sql.ts";
 
 export interface LikeInput {
@@ -15,6 +18,10 @@ export interface RepostInput {
   userId: string;
   threadId: string;
   now: number;
+  /** The reposter's resolution-11 cell: the new anchor. */
+  location: string;
+  partition: string;
+  byAuthor: string;
 }
 
 const SCHEMA = [
@@ -31,11 +38,16 @@ const SCHEMA = [
     user_id TEXT NOT NULL, thread_id TEXT NOT NULL, kind TEXT NOT NULL, at INTEGER NOT NULL,
     PRIMARY KEY (user_id, thread_id, kind)
   )`,
+  OUTBOX_SCHEMA,
 ];
 
 /** "Did I like this" lives with the user, so a viral thread never answers per-viewer questions. */
 export class UserStateDb {
-  constructor(private readonly sql: SqlRunner) {}
+  private readonly outbox: Outbox;
+
+  constructor(private readonly sql: SqlRunner) {
+    this.outbox = new Outbox(sql);
+  }
 
   init(): void {
     runAll(this.sql, SCHEMA);
@@ -52,16 +64,18 @@ export class UserStateDb {
         "DELETE FROM likes WHERE user_id = ? AND post_id = ? RETURNING thread_id",
         input.userId, input.postId,
       ).toArray()[0];
-      return removed
-        ? { changed: true, first: false, threadId: removed.thread_id }
-        : { changed: false, first: false, threadId: input.threadId };
+      if (!removed) return { changed: false, first: false, threadId: input.threadId };
+      this.queueLike(input, removed.thread_id, -1, false);
+      return { changed: true, first: false, threadId: removed.thread_id };
     }
     const inserted = this.sql.exec(
       "INSERT INTO likes (user_id, post_id, thread_id, at) VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING RETURNING post_id",
       input.userId, input.postId, input.threadId, input.now,
     ).toArray().length > 0;
     if (!inserted) return { changed: false, first: false, threadId: input.threadId };
-    return { changed: true, first: this.firstEngagement(input.userId, input.threadId, "like", input.now), threadId: input.threadId };
+    const first = this.firstEngagement(input.userId, input.threadId, "like", input.now);
+    this.queueLike(input, input.threadId, 1, first);
+    return { changed: true, first, threadId: input.threadId };
   }
 
   repost(input: RepostInput): { ok: boolean; first: boolean } {
@@ -70,7 +84,27 @@ export class UserStateDb {
       input.userId, input.threadId, input.now,
     ).toArray().length > 0;
     if (!inserted) return { ok: false, first: false };
-    return { ok: true, first: this.firstEngagement(input.userId, input.threadId, "repost", input.now) };
+    const first = this.firstEngagement(input.userId, input.threadId, "repost", input.now);
+    this.outbox.add([{
+      eventId: uuidv7(input.now), type: "thread.reposted", threadId: input.threadId, userId: input.userId, first,
+      location: input.location, partition: input.partition, byAuthor: input.byAuthor, at: input.now,
+    }]);
+    return { ok: true, first };
+  }
+
+  pendingEvents(limit: number): FeedEvent[] {
+    return this.outbox.pending(limit);
+  }
+
+  ackEvents(eventIds: readonly string[]): void {
+    this.outbox.ack(eventIds);
+  }
+
+  private queueLike(input: LikeInput, threadId: string, delta: 1 | -1, first: boolean): void {
+    this.outbox.add([{
+      eventId: uuidv7(input.now), type: "thread.liked", threadId, postId: input.postId,
+      userId: input.userId, delta, first, at: input.now,
+    }]);
   }
 
   engagement(userId: string, threadIds: readonly string[]): EngagementResponse {
@@ -96,7 +130,7 @@ export class UserStateDb {
 
   isEmpty(): boolean {
     const rows = this.sql.exec<{ n: number }>(
-      "SELECT (SELECT COUNT(*) FROM likes) + (SELECT COUNT(*) FROM reposts) + (SELECT COUNT(*) FROM engaged) AS n",
+      "SELECT (SELECT COUNT(*) FROM likes) + (SELECT COUNT(*) FROM reposts) + (SELECT COUNT(*) FROM engaged) + (SELECT COUNT(*) FROM outbox) AS n",
     ).toArray()[0];
     return Number(rows?.n ?? 0) === 0;
   }

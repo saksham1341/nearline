@@ -35,7 +35,7 @@
   },
   "queues": {
     "producers": [{ "binding": "FEED_EVENTS", "queue": "nearline-feed-events" }],
-    "consumers": [{ "queue": "nearline-feed-events", "max_batch_size": 100, "max_batch_timeout": 1, "max_retries": 10 }]
+    "consumers": [{ "queue": "nearline-feed-events", "max_batch_size": 100, "max_batch_timeout": 1, "max_retries": 10, "dead_letter_queue": "nearline-feed-events-dlq" }]
   },
   "kv_namespaces": [
     { "binding": "PARTITION_MAP", "id": "f0b4757a93ad4e40bfba79bae397a977" }
@@ -84,7 +84,7 @@
       },
       "queues": {
         "producers": [{ "binding": "FEED_EVENTS", "queue": "nearline-feed-events-preview" }],
-        "consumers": [{ "queue": "nearline-feed-events-preview", "max_batch_size": 100, "max_batch_timeout": 1, "max_retries": 10 }]
+        "consumers": [{ "queue": "nearline-feed-events-preview", "max_batch_size": 100, "max_batch_timeout": 1, "max_retries": 10, "dead_letter_queue": "nearline-feed-events-preview-dlq" }]
       },
       "kv_namespaces": [
         { "binding": "PARTITION_MAP", "id": "49f2d883b35347e187cffe614a15597a" }

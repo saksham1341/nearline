@@ -8,7 +8,8 @@ import {
   type EngagementKind,
 } from "../../../packages/shared/constants.ts";
 import { uuidv7 } from "../../../packages/shared/uuid.ts";
-import type { CellEvent, ThreadLikedEvent, ThreadRepostedEvent } from "../events.ts";
+import type { CellEvent, FeedEvent, ThreadLikedEvent, ThreadRepostedEvent } from "../events.ts";
+import { Outbox, OUTBOX_SCHEMA } from "./outbox.ts";
 import { fail, type Outcome } from "./outcome.ts";
 import { runAll, type SqlRunner } from "./sql.ts";
 
@@ -113,8 +114,10 @@ const SCHEMA = [
   "CREATE TABLE IF NOT EXISTS reply_engagements (user_id TEXT NOT NULL, kind TEXT NOT NULL, PRIMARY KEY (user_id, kind))",
   "CREATE TABLE IF NOT EXISTS ref_partitions (partition TEXT PRIMARY KEY)",
   "CREATE TABLE IF NOT EXISTS applied_events (event_id TEXT PRIMARY KEY, at INTEGER NOT NULL)",
+  OUTBOX_SCHEMA,
 ];
 
+/** Cleared on expiry; the outbox is kept until the expiry events have been sent. */
 const TABLES = ["thread", "posts", "participants", "repliers", "reply_engagements", "ref_partitions", "applied_events"];
 
 /**
@@ -122,13 +125,21 @@ const TABLES = ["thread", "posts", "participants", "repliers", "reply_engagement
  * Every change that other components care about comes back as cell events for the queue.
  */
 export class ThreadDb {
-  constructor(private readonly sql: SqlRunner) {}
+  private readonly outbox: Outbox;
+  private schemaReady = false;
 
+  constructor(private readonly sql: SqlRunner) {
+    this.outbox = new Outbox(sql);
+  }
+
+  /** Creates the tables. Only `create` calls it, so looking up an unknown thread stores nothing. */
   init(): void {
     runAll(this.sql, SCHEMA);
+    this.schemaReady = true;
   }
 
   create(input: CreateThreadInput): Result<{ summary: ThreadSummary }> {
+    this.init();
     const { id, actor, roomTag, location, partition, body, now } = input;
     if (this.row()) return { outcome: fail("BAD_REQUEST"), events: [] };
     this.sql.exec(
@@ -144,10 +155,11 @@ export class ThreadDb {
     this.sql.exec("INSERT INTO participants (user_id) VALUES (?)", actor.userId);
     const summary = this.requireSummary();
     const root: AnchorInput = { anchorAt: now, kind: "root", byAuthor: actor.author, location };
-    return { outcome: { ok: true, summary }, events: [this.refAdded(partition, root, summary)] };
+    return { outcome: { ok: true, summary }, events: this.emit([this.refAdded(partition, root, summary)]) };
   }
 
   reply(input: ReplyInput): Result<{ post: PostView; summary: ThreadSummary }> {
+    if (!this.hasSchema()) return { outcome: fail("THREAD_NOT_FOUND"), events: [] };
     const live = this.live(input.now);
     if (!live.ok) return { outcome: live, events: [] };
     if (!this.post(input.parentId)) return { outcome: fail("PARENT_NOT_FOUND"), events: [] };
@@ -173,10 +185,11 @@ export class ThreadDb {
     this.bump();
     const summary = this.requireSummary();
     const post = this.postView(this.post(input.postId)!, summary.id);
-    return { outcome: { ok: true, post, summary }, events: this.updatedEvents(summary) };
+    return { outcome: { ok: true, post, summary }, events: this.emit(this.updatedEvents(summary)) };
   }
 
   remove(input: RemoveInput): Result<{ outcome: DeletionOutcome }> {
+    if (!this.hasSchema()) return { outcome: fail("THREAD_NOT_FOUND"), events: [] };
     const row = this.row();
     if (!row) return { outcome: fail("THREAD_NOT_FOUND"), events: [] };
     if (row.expires_at <= input.now) return { outcome: fail("THREAD_EXPIRED"), events: [] };
@@ -186,7 +199,7 @@ export class ThreadDb {
     const posts = this.sql.exec<{ id: string; parentId: string | null }>("SELECT id, parent_id AS parentId FROM posts").toArray();
     const outcome = deletionOutcome(posts, input.postId)!;
     if (outcome === "remove_thread") {
-      const events = this.expiredEvents(input.now);
+      const events = this.emit(this.expiredEvents(input.now));
       this.clear();
       return { outcome: { ok: true, outcome }, events };
     }
@@ -197,10 +210,11 @@ export class ThreadDb {
       this.sql.exec("UPDATE posts SET body = '', deleted = 1, like_count = 0 WHERE id = ?", input.postId);
     }
     this.bump();
-    return { outcome: { ok: true, outcome }, events: this.updatedEvents(this.requireSummary()) };
+    return { outcome: { ok: true, outcome }, events: this.emit(this.updatedEvents(this.requireSummary())) };
   }
 
   applyLikes(events: readonly ThreadLikedEvent[], now: number): CellEvent[] {
+    if (!this.hasSchema()) return [];
     const row = this.row();
     if (!row || row.expires_at <= now) return [];
     let changed = false;
@@ -220,10 +234,11 @@ export class ThreadDb {
     if (!changed) return [];
     if (lastActivity !== null) this.touch(lastActivity);
     this.bump();
-    return this.updatedEvents(this.requireSummary());
+    return this.emit(this.updatedEvents(this.requireSummary()));
   }
 
   applyReposts(events: readonly ThreadRepostedEvent[], now: number): CellEvent[] {
+    if (!this.hasSchema()) return [];
     const row = this.row();
     if (!row || row.expires_at <= now) return [];
     const anchors: { partition: string; anchor: AnchorInput }[] = [];
@@ -241,15 +256,17 @@ export class ThreadDb {
     this.bump();
     const summary = this.requireSummary();
     const added = anchors.map(({ partition, anchor }) => this.refAdded(partition, anchor, summary));
-    return [...added, ...this.updatedEvents(summary)];
+    return this.emit([...added, ...this.updatedEvents(summary)]);
   }
 
   summary(now: number): Outcome<{ summary: ThreadSummary }> {
+    if (!this.hasSchema()) return fail("THREAD_NOT_FOUND");
     const live = this.live(now);
     return live.ok ? { ok: true, summary: this.summaryOf(live.row) } : live;
   }
 
   thread(now: number): Outcome<{ summary: ThreadSummary; posts: PostView[] }> {
+    if (!this.hasSchema()) return fail("THREAD_NOT_FOUND");
     const live = this.live(now);
     if (!live.ok) return live;
     const rows = this.sql.exec<PostRow>("SELECT * FROM posts ORDER BY created_at, id").toArray();
@@ -257,15 +274,43 @@ export class ThreadDb {
   }
 
   expiresAt(): number | null {
+    if (!this.hasSchema()) return null;
     return this.row()?.expires_at ?? null;
   }
 
   /** Returns the expiry events and empties the store when the thread is due; null otherwise. */
   expireIfDue(now: number): CellEvent[] | null {
+    if (!this.hasSchema()) return null;
     const row = this.row();
     if (!row || row.expires_at > now) return null;
-    const events = this.expiredEvents(now);
+    const events = this.emit(this.expiredEvents(now));
     this.clear();
+    return events;
+  }
+
+  /** Events not yet accepted by the queue, oldest first. */
+  pendingEvents(limit: number): FeedEvent[] {
+    return this.hasSchema() ? this.outbox.pending(limit) : [];
+  }
+
+  ackEvents(eventIds: readonly string[]): void {
+    if (this.hasSchema()) this.outbox.ack(eventIds);
+  }
+
+  /** True once the thread was removed or expired and every event about it has been sent. */
+  isGone(): boolean {
+    return this.hasSchema() && this.row() === null && this.outbox.size() === 0;
+  }
+
+  private hasSchema(): boolean {
+    if (!this.schemaReady) {
+      this.schemaReady = this.sql.exec("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'thread'").toArray().length > 0;
+    }
+    return this.schemaReady;
+  }
+
+  private emit(events: CellEvent[]): CellEvent[] {
+    this.outbox.add(events);
     return events;
   }
 

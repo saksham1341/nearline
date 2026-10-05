@@ -1,6 +1,7 @@
 import { locationHintFor } from "../../packages/feed/location-hint.ts";
 import type { PartitionMap, SplitEntry } from "../../packages/feed/partition.ts";
 import { PARTITION_MAP_CACHE_MS } from "../../packages/shared/constants.ts";
+import { QUEUE_BATCH_LIMIT } from "./durable-objects/flush.ts";
 import type { Env } from "./env.ts";
 import type { CellIndexApi, LimitKind, Services, ThreadStoreApi, UserStateApi } from "./services.ts";
 import { userStateName } from "./stores/user-state-db.ts";
@@ -15,7 +16,10 @@ export function createServices(env: Env): Services {
       env.CELL_INDEX.getByName(partition, { locationHint: locationHintFor(partition) }) as unknown as CellIndexApi,
     user: async (userId) => env.USER_STATE.getByName(await userStateName(userId)) as unknown as UserStateApi,
     sendEvents: async (events) => {
-      if (events.length > 0) await env.FEED_EVENTS.sendBatch(events.map((body) => ({ body })));
+      // Cloudflare Queues accepts at most 100 messages per sendBatch.
+      for (let start = 0; start < events.length; start += QUEUE_BATCH_LIMIT) {
+        await env.FEED_EVENTS.sendBatch(events.slice(start, start + QUEUE_BATCH_LIMIT).map((body) => ({ body })));
+      }
     },
     partitionMap: (now) => loadPartitionMap(env.PARTITION_MAP, now),
     limit: async (kind, key) => (await limiter(env, kind).limit({ key })).success,

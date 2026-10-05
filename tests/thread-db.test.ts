@@ -151,4 +151,35 @@ describe("thread store", () => {
     expect(events).toMatchObject([{ type: "thread.expired", partition: "p-root", threadId }]);
     expect(db.expiresAt()).toBeNull();
   });
+
+  it("creates no storage for a thread that was never created", () => {
+    const sql = memorySql();
+    const db = new ThreadDb(sql);
+    expect(db.summary(T)).toEqual({ ok: false, code: "THREAD_NOT_FOUND" });
+    expect(db.remove({ postId: threadId, actor: author, now: T }).outcome).toEqual({ ok: false, code: "THREAD_NOT_FOUND" });
+    expect(db.applyLikes([like(threadId, alice.userId, 1, true, T)], T)).toEqual([]);
+    expect(db.expiresAt()).toBeNull();
+    expect(sql.exec("SELECT name FROM sqlite_master WHERE type = 'table'").toArray()).toEqual([]);
+  });
+
+  it("keeps every event in an outbox until it is acknowledged", () => {
+    const { db } = fresh();
+    expect(db.pendingEvents(100).map((event) => event.type)).toEqual(["ref.added"]);
+    db.ackEvents(db.pendingEvents(100).map((event) => event.eventId));
+    expect(db.pendingEvents(100)).toEqual([]);
+    reply(db, alice);
+    expect(db.pendingEvents(100).map((event) => event.type)).toEqual(["thread.updated"]);
+  });
+
+  it("is gone only once it has expired and its expiry events were sent", () => {
+    const { db } = fresh();
+    db.ackEvents(db.pendingEvents(100).map((event) => event.eventId));
+    expect(db.isGone()).toBe(false);
+    db.expireIfDue(T + THREAD_TTL_MS);
+    expect(db.summary(T + THREAD_TTL_MS)).toEqual({ ok: false, code: "THREAD_NOT_FOUND" });
+    expect(db.isGone()).toBe(false);
+    expect(db.pendingEvents(100).map((event) => event.type)).toEqual(["thread.expired"]);
+    db.ackEvents(db.pendingEvents(100).map((event) => event.eventId));
+    expect(db.isGone()).toBe(true);
+  });
 });

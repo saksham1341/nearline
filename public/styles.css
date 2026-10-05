@@ -226,7 +226,8 @@ body:has(> .gate:not([hidden]))::before { content: ""; }
 :root.room-active .frame { background: var(--private-bar); }
 .appbar-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; }
 .brand { min-width: 0; display: grid; grid-template-columns: auto auto; justify-content: start; align-items: center; column-gap: 8px; }
-.wordmark { grid-column: 1; display: flex; align-items: center; gap: 8px; font-size: var(--t-20); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+.logo { grid-column: 1; width: 28px; height: 28px; color: var(--bar-ink); }
+.wordmark { grid-column: 2; display: flex; align-items: center; gap: 8px; font-size: var(--t-20); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
 .wordmark-line { display: none; }
 
 /* Sync overlay: blurs the whole app when not live. */
@@ -385,10 +386,10 @@ body.doc { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
   flex: none; height: 56px; display: flex; align-items: center; gap: 4px; padding: 0 8px 0 4px;
   background: var(--bar); color: var(--bar-ink);
 }
+.thread-header .logo { margin: 0 auto; color: var(--bar-ink); }
 .thread-header .icon-button { width: 40px; height: 40px; }
 :root.room-active .thread-header { background: var(--private-bar); }
 .thread-header .icon-button, .thread-header .text-button { color: var(--bar-ink); }
-.thread-title { flex: 1; font-size: var(--t-14); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
 .thread-faded, .thread-loading { margin: 12px 16px; padding: 10px 14px; border-radius: 12px; background: var(--surface); color: var(--ink-2); font-size: var(--t-14); }
 .thread-context { display: grid; padding: 4px 0; border-bottom: 1px solid var(--line); }
 .context-link {
@@ -562,7 +563,6 @@ textarea:focus, textarea:focus-visible { outline: none; box-shadow: none; }
     box-shadow: 0 0 0 1px var(--island-line), 0 18px 48px -12px rgba(0, 0, 0, 0.35);
   }
   .thread-header { height: 56px; padding: 0 12px 0 8px; }
-  .thread-title { font-size: var(--t-16); }
 }
 
 @media (prefers-reduced-motion: reduce) {

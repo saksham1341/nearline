@@ -568,6 +568,11 @@ textarea:focus, textarea:focus-visible { outline: none; box-shadow: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-delay: 0ms !important; transition-duration: 0.01ms !important; }
 }
+/* When a thread is open on narrow screens, hide the main bar and let the thread fill the space. */
+@media (max-width: 1199px) {
+  :root.thread-open .frame { display: none; }
+  :root.thread-open .thread-view { top: max(8px, env(safe-area-inset-top, 0px)); }
+}
 
 /* ---------- Long-form page (/how-it-works) ---------- */
 body.doc { height: auto; min-height: 100%; overflow: auto; background: var(--canvas); }

@@ -1,0 +1,108 @@
+import type { EngagementResponse } from "../../../packages/protocol/index.ts";
+import { USER_STATE_RETENTION_MS } from "../../../packages/shared/constants.ts";
+import { bytesToHex, sha256 } from "../../../packages/shared/encoding.ts";
+import { runAll, type SqlRunner } from "./sql.ts";
+
+export interface LikeInput {
+  userId: string;
+  postId: string;
+  threadId: string;
+  on: boolean;
+  now: number;
+}
+
+export interface RepostInput {
+  userId: string;
+  threadId: string;
+  now: number;
+}
+
+const SCHEMA = [
+  `CREATE TABLE IF NOT EXISTS likes (
+    user_id TEXT NOT NULL, post_id TEXT NOT NULL, thread_id TEXT NOT NULL, at INTEGER NOT NULL,
+    PRIMARY KEY (user_id, post_id)
+  )`,
+  "CREATE INDEX IF NOT EXISTS likes_thread ON likes(user_id, thread_id)",
+  `CREATE TABLE IF NOT EXISTS reposts (
+    user_id TEXT NOT NULL, thread_id TEXT NOT NULL, at INTEGER NOT NULL,
+    PRIMARY KEY (user_id, thread_id)
+  )`,
+  `CREATE TABLE IF NOT EXISTS engaged (
+    user_id TEXT NOT NULL, thread_id TEXT NOT NULL, kind TEXT NOT NULL, at INTEGER NOT NULL,
+    PRIMARY KEY (user_id, thread_id, kind)
+  )`,
+];
+
+/** "Did I like this" lives with the user, so a viral thread never answers per-viewer questions. */
+export class UserStateDb {
+  constructor(private readonly sql: SqlRunner) {}
+
+  init(): void {
+    runAll(this.sql, SCHEMA);
+  }
+
+  like(input: LikeInput): { changed: boolean; first: boolean } {
+    if (!input.on) {
+      const removed = this.sql.exec(
+        "DELETE FROM likes WHERE user_id = ? AND post_id = ? RETURNING post_id",
+        input.userId, input.postId,
+      ).toArray().length > 0;
+      return { changed: removed, first: false };
+    }
+    const inserted = this.sql.exec(
+      "INSERT INTO likes (user_id, post_id, thread_id, at) VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING RETURNING post_id",
+      input.userId, input.postId, input.threadId, input.now,
+    ).toArray().length > 0;
+    if (!inserted) return { changed: false, first: false };
+    return { changed: true, first: this.firstEngagement(input.userId, input.threadId, "like", input.now) };
+  }
+
+  repost(input: RepostInput): { ok: boolean; first: boolean } {
+    const inserted = this.sql.exec(
+      "INSERT INTO reposts (user_id, thread_id, at) VALUES (?, ?, ?) ON CONFLICT DO NOTHING RETURNING thread_id",
+      input.userId, input.threadId, input.now,
+    ).toArray().length > 0;
+    if (!inserted) return { ok: false, first: false };
+    return { ok: true, first: this.firstEngagement(input.userId, input.threadId, "repost", input.now) };
+  }
+
+  engagement(userId: string, threadIds: readonly string[]): EngagementResponse {
+    if (threadIds.length === 0) return { liked: [], reposted: [] };
+    const list = threadIds.map(() => "?").join(", ");
+    const liked = this.sql.exec<{ post_id: string }>(
+      `SELECT post_id FROM likes WHERE user_id = ? AND thread_id IN (${list}) ORDER BY post_id`,
+      userId, ...threadIds,
+    ).toArray().map((row) => row.post_id);
+    const reposted = this.sql.exec<{ thread_id: string }>(
+      `SELECT thread_id FROM reposts WHERE user_id = ? AND thread_id IN (${list}) ORDER BY thread_id`,
+      userId, ...threadIds,
+    ).toArray().map((row) => row.thread_id);
+    return { liked, reposted };
+  }
+
+  sweep(now: number): void {
+    const cutoff = now - USER_STATE_RETENTION_MS;
+    this.sql.exec("DELETE FROM likes WHERE at < ?", cutoff);
+    this.sql.exec("DELETE FROM reposts WHERE at < ?", cutoff);
+    this.sql.exec("DELETE FROM engaged WHERE at < ?", cutoff);
+  }
+
+  isEmpty(): boolean {
+    const rows = this.sql.exec<{ n: number }>(
+      "SELECT (SELECT COUNT(*) FROM likes) + (SELECT COUNT(*) FROM reposts) + (SELECT COUNT(*) FROM engaged) AS n",
+    ).toArray()[0];
+    return Number(rows?.n ?? 0) === 0;
+  }
+
+  private firstEngagement(userId: string, threadId: string, kind: "like" | "repost", now: number): boolean {
+    return this.sql.exec(
+      "INSERT INTO engaged (user_id, thread_id, kind, at) VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING RETURNING kind",
+      userId, threadId, kind, now,
+    ).toArray().length > 0;
+  }
+}
+
+/** 65,536 buckets: enough to spread any load, few enough to stay cheap. */
+export async function userStateName(userId: string): Promise<string> {
+  return `u:${bytesToHex(await sha256(userId)).slice(0, 4)}`;
+}

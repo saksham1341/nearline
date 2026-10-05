@@ -183,6 +183,14 @@ describe("thread store", () => {
     expect(db.isGone()).toBe(true);
   });
 
+  it("returns the client's request id on the posts it created", () => {
+    const db = new ThreadDb(memorySql());
+    const created = db.create({ id: threadId, actor: author, roomTag: "", location, partition: "p", body: "hi", now: T, clientRef: "req-1" });
+    expect(created.outcome).toMatchObject({ ok: true, summary: { root: { clientRef: "req-1" } } });
+    const replied = db.reply({ postId: uuidv7(T), parentId: threadId, actor: alice, body: "yo", now: T, clientRef: "req-2" });
+    expect(replied.outcome).toMatchObject({ ok: true, post: { clientRef: "req-2" } });
+  });
+
   describe("branch expiry", () => {
     const later = (minutes: number) => T + minutes * 60_000;
     const postIdOf = (result: ReturnType<ThreadDb["reply"]>) => (result.outcome.ok ? result.outcome.post.id : "");

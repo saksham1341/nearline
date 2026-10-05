@@ -43,6 +43,8 @@ export interface PostView {
   likeCount: number;
   /** 15 minutes after the last activity in this post's subtree; the branch fades then. */
   expiresAt: number;
+  /** The request id the author's client sent with this post, so it can match its own pending copy. */
+  clientRef?: string;
 }
 
 export type FeedTab = "latest" | "trending";

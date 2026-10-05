@@ -220,6 +220,9 @@ export class FeedState {
     const open = this.open;
     if (!open || open.id !== response.summary.id) return;
     const known = new Set(response.posts.map((post) => post.id));
+    for (const post of response.posts) {
+      if (post.clientRef && this.pendingReplies.delete(post.clientRef)) known.add(post.clientRef);
+    }
     const pending = open.posts.filter((post) => this.pendingReplies.has(post.id) && !known.has(post.id));
     const previous = open.posts;
     open.posts = [...response.posts, ...pending];
@@ -279,6 +282,16 @@ export class FeedState {
   }
 
   private upsert(item: FeedItem): void {
+    // The poll may bring our own post back before the action answer does: take over its pending slot.
+    const ref = item.summary.root.clientRef;
+    if (ref && ref !== item.summary.id && this.threads.get(ref)?.pending) {
+      this.threads.delete(ref);
+      for (const tab of TABS) {
+        this.lists[tab] = this.lists[tab].includes(item.summary.id)
+          ? this.lists[tab].filter((id) => id !== ref)
+          : this.lists[tab].map((id) => (id === ref ? item.summary.id : id));
+      }
+    }
     const existing = this.threads.get(item.summary.id);
     const via = existing && !existing.pending && existing.via.createdAt > item.via.createdAt ? existing.via : item.via;
     this.threads.set(item.summary.id, { summary: item.summary, via, pending: false });

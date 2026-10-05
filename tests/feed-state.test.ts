@@ -122,6 +122,30 @@ describe("client feed state", () => {
     expect(state.takeUnflagged()).toEqual([id(1)]);
   });
 
+  it("recognises its own pending post in a poll that arrives before the action answer", () => {
+    const state = new FeedState();
+    const temp = "11111111-1111-4111-8111-111111111111";
+    state.addPendingThread({ ...summary(9), id: temp }, via(9));
+    const real = item(9);
+    real.summary = { ...real.summary, root: { ...real.summary.root, clientRef: temp } };
+    state.applyHead("latest", [real], null, null);
+    expect(state.visibleIds("latest")).toEqual([id(9)]);
+    expect(state.threads.has(temp)).toBe(false);
+    state.confirmPendingThread(temp, id(9));
+    expect(state.visibleIds("latest")).toEqual([id(9)]);
+  });
+
+  it("recognises its own pending reply in a tree refresh", () => {
+    const state = new FeedState();
+    state.beginOpen(id(1));
+    const temp = "22222222-2222-4222-8222-222222222222";
+    state.addPendingReply({ id: temp, threadId: id(1), parentId: id(1), author: "bbbb0002", body: "hi", createdAt: 5, deleted: false, likeCount: 0, expiresAt: 900_000 });
+    const real = { id: id(7), threadId: id(1), parentId: id(1), author: "bbbb0002", body: "hi", createdAt: 5, deleted: false, likeCount: 0, expiresAt: 900_000, clientRef: temp };
+    state.applyTree({ version: 2, serverTime: 0, summary: summary(1), posts: [summary(1).root, real] }, null);
+    expect(state.open!.posts.map((post) => post.id)).toEqual([id(1), id(7)]);
+    expect(state.pendingReplies.has(temp)).toBe(false);
+  });
+
   describe("faded branches", () => {
     const reply = (n: number, parentId: string, expiresAt: number): PostView => ({
       id: id(n), threadId: id(1), parentId, author: "bbbb0002", body: `r${n}`, createdAt: n, deleted: false, likeCount: 0, expiresAt,

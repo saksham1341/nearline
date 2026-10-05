@@ -49,13 +49,13 @@ export async function handleAction(request: Request, ctx: ApiContext): Promise<R
       const id = uuidv7(now);
       const partition = partitionFor(action.location, await ctx.services.partitionMap(now), now).write;
       const outcome = await ctx.services.thread(id, locationHintFor(action.location)).create({
-        id, actor, roomTag: action.room, location: action.location, partition, body: action.body, now,
+        id, actor, roomTag: action.room, location: action.location, partition, body: action.body, now, clientRef: action.id,
       });
       return respond(outcome.ok ? { ok: true, postId: id } : outcome);
     }
     case "reply": {
       const postId = uuidv7(now);
-      const outcome = await ctx.services.thread(action.threadId).reply({ postId, parentId: action.parentId, actor, body: action.body, now });
+      const outcome = await ctx.services.thread(action.threadId).reply({ postId, parentId: action.parentId, actor, body: action.body, now, clientRef: action.id });
       return respond(outcome.ok ? { ok: true, postId } : outcome);
     }
     case "delete": {

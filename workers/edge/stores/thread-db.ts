@@ -31,6 +31,7 @@ export interface CreateThreadInput {
   partition: string;
   body: string;
   now: number;
+  clientRef?: string;
 }
 
 export interface ReplyInput {
@@ -39,6 +40,7 @@ export interface ReplyInput {
   actor: Actor;
   body: string;
   now: number;
+  clientRef?: string;
 }
 
 export interface RemoveInput {
@@ -81,6 +83,7 @@ interface PostRow {
   deleted: number;
   like_count: number;
   active_at: number;
+  client_ref: string | null;
 }
 
 const SCHEMA = [
@@ -110,7 +113,8 @@ const SCHEMA = [
     deleted INTEGER NOT NULL DEFAULT 0,
     like_count INTEGER NOT NULL DEFAULT 0,
     -- This post's own last activity. Branch expiry is derived from these (see branchExpiries).
-    active_at INTEGER NOT NULL
+    active_at INTEGER NOT NULL,
+    client_ref TEXT
   )`,
   "CREATE INDEX IF NOT EXISTS posts_active ON posts(active_at)",
   "CREATE TABLE IF NOT EXISTS participants (user_id TEXT PRIMARY KEY)",
@@ -153,8 +157,8 @@ export class ThreadDb {
       id, roomTag, actor.author, actor.userId, location, now, now, now + THREAD_TTL_MS, now,
     );
     this.sql.exec(
-      "INSERT INTO posts (id, parent_id, author, author_user_id, body, created_at, active_at) VALUES (?, NULL, ?, ?, ?, ?, ?)",
-      id, actor.author, actor.userId, body, now, now,
+      "INSERT INTO posts (id, parent_id, author, author_user_id, body, created_at, active_at, client_ref) VALUES (?, NULL, ?, ?, ?, ?, ?, ?)",
+      id, actor.author, actor.userId, body, now, now, input.clientRef ?? null,
     );
     this.sql.exec("INSERT INTO participants (user_id) VALUES (?)", actor.userId);
     const summary = this.requireSummary();
@@ -176,8 +180,8 @@ export class ThreadDb {
     const isAuthor = actor.userId === live.row.author_user_id;
     const othersHaveReplied = this.count("SELECT COUNT(*) AS n FROM repliers") > 0;
     this.sql.exec(
-      "INSERT INTO posts (id, parent_id, author, author_user_id, body, created_at, active_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      input.postId, input.parentId, actor.author, actor.userId, input.body, now, now,
+      "INSERT INTO posts (id, parent_id, author, author_user_id, body, created_at, active_at, client_ref) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      input.postId, input.parentId, actor.author, actor.userId, input.body, now, now, input.clientRef ?? null,
     );
     this.sql.exec("UPDATE thread SET reply_count = reply_count + 1");
     if (!isAuthor) this.sql.exec("INSERT INTO repliers (user_id) VALUES (?) ON CONFLICT DO NOTHING", actor.userId);
@@ -190,7 +194,8 @@ export class ThreadDb {
     this.touch(now);
     this.bump();
     const summary = this.requireSummary();
-    const post = this.postView(this.post(input.postId)!, summary.id);
+    // A new reply is a leaf: its branch expires 15 minutes from now.
+    const post = this.postView(this.post(input.postId)!, summary.id, now + THREAD_TTL_MS);
     return { outcome: { ok: true, post, summary }, events: this.emit(this.updatedEvents(summary)) };
   }
 
@@ -478,7 +483,8 @@ export class ThreadDb {
   }
 
   private summaryOf(row: ThreadRow): ThreadSummary {
-    const root = this.postView(this.post(row.id)!, row.id);
+    // The root's branch is the whole thread, so its expiry is the thread's.
+    const root = this.postView(this.post(row.id)!, row.id, row.expires_at);
     return {
       id: row.id,
       roomTag: row.room_tag,
@@ -506,6 +512,7 @@ export class ThreadDb {
       deleted: row.deleted === 1,
       likeCount: Math.max(0, row.like_count),
       expiresAt: expiresAt ?? this.branchExpiryMap().get(row.id) ?? Number(row.active_at) + THREAD_TTL_MS,
+      ...(row.client_ref ? { clientRef: row.client_ref } : {}),
     };
   }
 }

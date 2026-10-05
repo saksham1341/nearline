@@ -496,6 +496,23 @@ textarea:focus, textarea:focus-visible { outline: none; box-shadow: none; }
   .frame { padding-top: 8px; }
 }
 
+/* ---------- Wide screens: the thread opens as its own island beside the feed ---------- */
+@media (min-width: 1200px) {
+  .app { --thread-w: 480px; overflow: visible; transition: translate 280ms var(--ease-out); }
+  .frame { border-radius: 12px 12px 0 0; }
+  .board { border-radius: 0 0 12px 12px; overflow: hidden; }
+  /* The pair stays centred: the feed slides left by half the thread's width. */
+  :root.thread-open .app { translate: calc(-1 * (var(--thread-w) + 16px) / 2) 0; }
+  :root.thread-open .feed-tabs { display: grid; }
+  .thread-view {
+    top: 0; bottom: 0; left: calc(100% + 16px); right: auto; width: var(--thread-w);
+    border-radius: 12px; overflow: hidden;
+    box-shadow: 0 0 0 1px var(--island-line), 0 18px 48px -12px rgba(0, 0, 0, 0.35);
+  }
+  .thread-header { height: 64px; padding: 0 12px 0 8px; }
+  .thread-title { font-size: var(--t-16); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-delay: 0ms !important; transition-duration: 0.01ms !important; }
 }

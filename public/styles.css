@@ -387,10 +387,10 @@ textarea:focus-visible { border-color: var(--ink-3); background: var(--bg); }
 
 /* ---------- Desktop: controls become a left rail, the feed a centred column ---------- */
 @media (min-width: 1024px) {
-  .app { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, var(--column)) minmax(0, 1fr); }
+  .app { display: grid; grid-template-columns: 280px minmax(0, 1fr); }
   .frame {
-    width: 280px; justify-self: end; display: flex; flex-direction: column; gap: 24px;
-    padding: 24px 24px 24px 16px; overflow: visible; z-index: 5;
+    display: flex; flex-direction: column; gap: 24px;
+    padding: 24px 24px 24px 24px; border-right: 1px solid var(--line); overflow: visible; z-index: 5;
   }
   :root.room-active .frame { box-shadow: none; }
   .frame-top { flex-direction: column; align-items: stretch; gap: 20px; }
@@ -405,17 +405,26 @@ textarea:focus-visible { border-color: var(--ink-3); background: var(--bg); }
   .range-control button small { display: block; color: var(--ink-3); font-size: var(--t-12); }
   .range-control button[aria-pressed="true"] { background: var(--surface); box-shadow: none; }
   .status-line { margin-top: 0; padding-left: 16px; }
-  .board { border-inline: 1px solid var(--line); }
+  .board { min-width: 0; }
+  .post { padding-inline: 24px; }
+  .composer { padding-inline: 24px; }
   :root.room-active .board { border-top: 3px solid var(--private); }
   .board-head { position: relative; }
-  .board-title { display: block; padding: 16px 16px 4px; font-size: var(--t-20); font-weight: 800; letter-spacing: -0.01em; }
+  .board-title { display: block; padding: 20px 24px 4px; font-size: var(--t-20); font-weight: 800; letter-spacing: -0.01em; }
   .identity-popover { right: auto; left: 0; }
   .thread-view { left: auto; width: min(480px, 100%); border-left: 1px solid var(--line); box-shadow: var(--shadow); }
 }
 
 /* Wide screens: the open thread sits beside the feed. */
 @media (min-width: 1280px) {
-  .thread-view { position: static; z-index: auto; width: auto; max-width: 520px; border-left: 0; border-right: 1px solid var(--line); box-shadow: none; animation: none; }
+  .app { grid-template-columns: 280px minmax(0, 1fr) clamp(400px, 34vw, 560px); }
+  .thread-view { position: static; z-index: auto; grid-column: 3; grid-row: 1; width: auto; border-left: 1px solid var(--line); box-shadow: none; animation: none; }
+  /* With no thread open, the right column says what it is for. */
+  :root:not(.thread-open) .app::after {
+    content: "Select a post to read its thread"; grid-column: 3; grid-row: 1;
+    display: grid; place-items: center; padding: 24px; border-left: 1px solid var(--line);
+    color: var(--ink-3); font-size: var(--t-14); text-align: center;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

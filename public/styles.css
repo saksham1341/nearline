@@ -238,18 +238,18 @@ body:has(> .gate:not([hidden]))::before { content: ""; }
 
 /* The range selector is a dropdown button showing the current value. */
 .scope-button {
-  min-height: 36px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px;
-  border: 0; border-radius: var(--pill); background: color-mix(in srgb, var(--bar-ink) 14%, transparent);
-  color: var(--bar-ink); font-size: var(--t-14); font-weight: 700; line-height: 1;
+  min-height: 36px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px;
+  border: 0; border-radius: var(--pill); background: color-mix(in srgb, var(--bar-ink) 20%, transparent);
+  color: var(--bar-ink); font-size: var(--t-14); font-weight: 700; line-height: 1.2;
   transition: background-color var(--fast) var(--ease-out);
 }
-.scope-button:hover { background: color-mix(in srgb, var(--bar-ink) 22%, transparent); }
+.scope-button:hover { background: color-mix(in srgb, var(--bar-ink) 30%, transparent); }
 .scope-button .icon { width: 14px; height: 14px; opacity: 0.7; }
 .scope-private { display: none; }
 :root.room-active .scope-private { display: inline; font-weight: 700; }
 :root.room-active .scope-private::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 2px; background: currentColor; vertical-align: 1px; }
 
-.identity-menu { position: relative; }
+.identity-menu { position: relative; display: inline-flex; align-items: center; }
 .identity-menu summary { width: 44px; height: 44px; display: grid; place-items: center; border-radius: var(--pill); list-style: none; cursor: pointer; color: var(--bar-ink); }
 /* Your own avatar opens the account menu. */
 .me-avatar {
@@ -499,7 +499,6 @@ textarea:focus, textarea:focus-visible { outline: none; box-shadow: none; }
   .button.primary:hover { opacity: 0.88; }
   .button.secondary:hover, .icon-button:hover, .text-button:hover { background: var(--surface); }
   .frame .icon-button:hover, .thread-header .icon-button:hover, .thread-header .text-button:hover, .identity-menu summary:hover, .scope-button:hover { background: rgba(255, 255, 255, 0.1); }
-  .audience-chip:not(.active):hover { background: var(--surface-2); }
   .identity-popover button:hover, .popover-link:hover, .range-control button:not([aria-pressed="true"]):hover { background: var(--surface); }
   .feed-tabs button:hover { color: var(--bar-ink); }
   .post-feed:hover { background: var(--surface); }
@@ -509,6 +508,7 @@ textarea:focus, textarea:focus-visible { outline: none; box-shadow: none; }
   .send-button:not(:disabled):hover { opacity: 0.88; }
   .context-link:hover { color: var(--ink); }
 }
+.appbar-trailing { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 
 /* ---------- Phone: dialogs become bottom sheets ---------- */
 @media (max-width: 719px) {

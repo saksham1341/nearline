@@ -461,18 +461,29 @@ textarea:focus, textarea:focus-visible { outline: none; box-shadow: none; }
 .filter-dialog input:focus-visible { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
 .dialog-actions { margin-top: 24px; display: flex; justify-content: flex-end; gap: 8px; }
 
-/* Range sheet: three choices, each with what it means. */
+/* Range sheet: a radio, the name with its reach beneath, and a circle that grows with the range. */
 .range-control { margin-top: 12px; display: grid; gap: 4px; }
 .range-control button {
-  min-height: 56px; padding: 0 16px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px;
-  border: 0; border-radius: 12px; background: transparent; color: var(--ink); text-align: left;
+  min-height: 64px; padding: 10px 16px 10px 14px;
+  display: grid; grid-template-columns: 20px minmax(0, 1fr) 40px; grid-template-rows: auto auto; column-gap: 14px; row-gap: 2px; align-items: center;
+  border: 0; border-radius: 14px; background: transparent; color: var(--ink); text-align: left;
 }
-.range-control button span { font-size: var(--t-16); font-weight: 700; }
-.range-control button small { color: var(--ink-2); font-size: var(--t-14); }
-.range-control button::after { content: ""; grid-column: 3; width: 20px; height: 20px; border: 2px solid var(--ink-3); border-radius: 50%; }
+.range-control button::before {
+  content: ""; grid-column: 1; grid-row: 1 / span 2; width: 20px; height: 20px; box-sizing: border-box;
+  border: 2px solid var(--ink-3); border-radius: 50%;
+}
+.range-control button[aria-pressed="true"]::before { border-color: var(--ink); background: radial-gradient(circle, var(--ink) 0 4.5px, transparent 5px); }
+.range-control button span { grid-column: 2; grid-row: 1; font-size: var(--t-16); font-weight: 700; }
+.range-control button small { grid-column: 2; grid-row: 2; color: var(--ink-2); font-size: var(--t-14); }
+.range-control button::after {
+  content: ""; grid-column: 3; grid-row: 1 / span 2; justify-self: center; width: var(--reach); height: var(--reach); border-radius: 50%;
+  border: 1.5px solid var(--ink-3); background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+.range-control button[data-scope="11"] { --reach: 12px; }
+.range-control button[data-scope="10"] { --reach: 22px; }
+.range-control button[data-scope="9"] { --reach: 36px; }
 .range-control button[aria-pressed="true"] { background: var(--surface); }
-.range-control button[aria-pressed="true"]::after { border: 6px solid var(--ink); }
-.range-control button { grid-template-columns: 1fr auto auto; }
+.range-control button[aria-pressed="true"]::after { border-color: var(--ink); background: color-mix(in srgb, var(--ink) 16%, transparent); }
 
 .toast {
   position: fixed; z-index: 40; left: 50%; bottom: max(88px, calc(80px + env(safe-area-inset-bottom, 0px)));

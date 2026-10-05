@@ -60,6 +60,17 @@
         <section id="range" aria-labelledby="range-title">
           <h2 id="range-title">2. How far you listen</h2>
           <p>You choose a range: Close, Nearby or Wide. Each range picks a hexagon size. Nearline takes the hexagon you are in at that size, plus the six hexagons touching it. Those seven hexagons are your <strong>region</strong>, and you see every post anchored inside it.</p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th scope="col">Range</th><th scope="col">Hexagon size</th><th scope="col">Region covers</th><th scope="col">Roughly</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Close</th><td>Resolution 11</td><td>0.01 km²</td><td>65 m around you</td></tr>
+                <tr><th scope="row">Nearby</th><td>Resolution 10</td><td>0.09 km²</td><td>170 m around you</td></tr>
+                <tr><th scope="row">Wide</th><td>Resolution 9</td><td>0.66 km²</td><td>450 m around you</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>The distances are averages. Your region is centred on the hexagon you are in rather than on you exactly, so near its edge you reach a little further one way than the other.</p>
           <figure class="narrow">
             <svg viewBox="0 0 320 260" role="img" aria-labelledby="region-svg-title">
               <title id="region-svg-title">A centre hexagon surrounded by six neighbours, forming a region</title>

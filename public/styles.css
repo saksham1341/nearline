@@ -15,29 +15,29 @@
   color-scheme: light dark;
 
   /* THEME: surfaces and ink (light) */
-  --canvas: #d5dbe1;
+  --canvas: #1a1a1a;
   --doodle: rgba(128, 128, 128, 0.12);
-  --bar: #14191f;
+  --bar: #0a0a0a;
   --bar-ink: #ffffff;
-  --bar-muted: #a7b1bb;
-  --private-bar: #1d5c45;
-  --accent: #14191f;
-  --on-accent: #ffffff;
+  --bar-muted: #888;
+  --private-bar: #1a1a00;
+  --accent: #c8ff00;
+  --on-accent: #0a0a0a;
   --bubble-shadow: 0 1px 1px rgba(15, 20, 25, 0.1);
-  --bg: #ffffff;
-  --surface: #f4f5f6;
-  --surface-2: #eceef0;
-  --line: #e4e6e9;
-  --line-strong: #cfd4d9;
-  --island-line: rgba(15, 20, 25, 0.06);
-  --island-shadow: 0 1px 2px rgba(15, 20, 25, 0.05), 0 4px 16px rgba(15, 20, 25, 0.04);
+  --bg: #f0f0f0;
+  --surface: #e8e8e8;
+  --surface-2: #ddd;
+  --line: #ccc;
+  --line-strong: #999;
+  --island-line: rgba(0, 0, 0, 0.08);
+  --island-shadow: 0 1px 2px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
   --island-radius: 24px;
-  --ink: #0f1419;
-  --ink-2: #536471;
-  --ink-3: #6b7781;
+  --ink: #c8ff00;
+  --ink-2: #aaa;
+  --ink-3: #888;
   --on-ink: #ffffff;
-  --live: #1f9d55;
-  --like: #e0245e;
+  --live: #c8ff00;
+  --like: #ff3366;
   --fading: #d4380d;
   --private: #1f8a5b;
   --overlay: rgba(15, 20, 25, 0.4);
@@ -74,7 +74,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --canvas: #0c1014;
-    --doodle: rgba(233, 237, 239, 0.045);
+    --doodle: rgba(200, 255, 0, 0.04);
     --bar: #1b2128;
     --bar-ink: #e9edef;
     --bar-muted: #8696a0;
@@ -89,10 +89,10 @@
     --line-strong: #3a3f46;
     --island-line: #23262b;
     --island-shadow: none;
-    --ink: #e7e9ea;
+    --ink: #c8ff00;
     --ink-2: #8b98a5;
     --ink-3: #8d98a2;
-    --on-ink: #000000;
+    --on-ink: #0a0a0a;
     --live: #3ccf7a;
     --like: #f4407a;
     --fading: #ff6a3d;
@@ -105,7 +105,7 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
   --canvas: #0c1014;
-  --doodle: rgba(233, 237, 239, 0.045);
+  --doodle: rgba(200, 255, 0, 0.04);
   --bar: #1b2128;
   --bar-ink: #e9edef;
   --bar-muted: #8696a0;
@@ -120,10 +120,10 @@
   --line-strong: #3a3f46;
   --island-line: #23262b;
   --island-shadow: none;
-  --ink: #e7e9ea;
+  --ink: #c8ff00;
   --ink-2: #8b98a5;
   --ink-3: #8d98a2;
-  --on-ink: #000000;
+  --on-ink: #0a0a0a;
   --live: #3ccf7a;
   --like: #f4407a;
   --fading: #ff6a3d;

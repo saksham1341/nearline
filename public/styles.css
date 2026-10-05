@@ -491,3 +491,50 @@ textarea:focus-visible, .filter-dialog input:focus-visible { outline: 0; }
 /* The thread view is rebuilt on every poll; only feed cards (keyed) animate in. */
 .thread-body .post { animation: none; }
 .thread-header .icon-button { margin-right: 0; }
+
+/* ---------- Long-form documentation page ---------- */
+body.doc { height: auto; min-height: 100%; overflow: auto; }
+.doc-shell { width: min(100% - 32px, 760px); margin: 0 auto; padding: max(28px, env(safe-area-inset-top, 0px)) 0 96px; }
+.doc-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 48px; }
+.doc-header .painted-mark { font-size: 30px; }
+.doc h1 { margin: 0 0 16px; font-size: clamp(34px, 8vw, 52px); font-weight: 600; letter-spacing: -0.025em; line-height: 1.05; text-wrap: balance; }
+.doc .lede { margin-bottom: 40px; color: var(--paint-2); font-size: 20px; line-height: 1.55; }
+.doc h2 { margin: 64px 0 14px; font-family: var(--font-paint); font-size: 30px; font-weight: 800; letter-spacing: 0.03em; line-height: 1.1; text-transform: uppercase; }
+.doc h3 { margin: 32px 0 8px; font-size: 19px; font-weight: 600; }
+.doc p, .doc li { color: var(--paint); font-size: var(--t-body); line-height: 1.65; }
+.doc p + p { margin-top: 14px; }
+.doc ul, .doc ol { margin: 12px 0; padding-left: 22px; }
+.doc li + li { margin-top: 6px; }
+.doc code { padding: 1px 5px; border-radius: var(--radius); background: var(--asphalt-high); color: var(--paint); font-family: var(--font-data); font-size: 0.88em; }
+.doc strong { font-weight: 600; }
+.doc .toc { display: grid; gap: 4px; margin: 0 0 24px; padding: 16px 18px; border: var(--stroke-paint) dashed var(--seam-strong); border-radius: var(--radius); list-style: none; }
+.doc .toc a { color: var(--paint-2); text-decoration: none; }
+.doc .toc a:hover { color: var(--paint); text-decoration: underline; text-underline-offset: 4px; }
+.doc figure { margin: 24px 0; padding: 18px; border: var(--stroke-hair) solid var(--seam); border-radius: var(--radius); background: var(--asphalt-raised); }
+.doc figure svg { display: block; width: 100%; height: auto; }
+.doc figcaption { margin-top: 12px; color: var(--paint-3); font-size: var(--t-ui); line-height: 1.5; }
+.doc table { width: 100%; margin: 16px 0; border-collapse: collapse; font-size: var(--t-ui); }
+.doc th, .doc td { padding: 10px 12px; border-bottom: var(--stroke-hair) solid var(--seam); text-align: left; vertical-align: top; }
+.doc th { color: var(--paint-3); font-size: var(--t-label); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.doc td { color: var(--paint); line-height: 1.5; }
+.doc .table-wrap { overflow-x: auto; }
+.doc .note { margin: 20px 0; padding: 14px 16px; border-left: 0; border: var(--stroke-paint) dashed var(--seam-strong); border-radius: var(--radius); color: var(--paint-2); }
+.doc .steps { counter-reset: step; list-style: none; padding: 0; }
+.doc .steps > li { position: relative; padding-left: 44px; }
+.doc .steps > li::before { counter-increment: step; content: counter(step); position: absolute; left: 0; top: 2px; width: 28px; height: 28px; display: grid; place-items: center; border-radius: var(--radius); background: var(--paint); color: var(--on-paint); font-family: var(--font-paint); font-weight: 800; }
+.doc .back-link { display: inline-flex; align-items: center; min-height: 44px; }
+.diagram-paint { fill: none; stroke: var(--paint); stroke-width: 2; }
+.diagram-faint { fill: none; stroke: var(--seam-strong); stroke-width: 2; stroke-dasharray: 6 5; }
+.diagram-fill { fill: var(--paint); }
+.diagram-yellow { fill: none; stroke: var(--yellow); stroke-width: 3; }
+.diagram-box { fill: var(--asphalt); stroke: var(--paint-2); stroke-width: 2; }
+.diagram-box-strong { fill: var(--paint); stroke: var(--paint); stroke-width: 2; }
+.diagram-text { fill: var(--paint); font-family: var(--font-ui); font-size: 15px; }
+.diagram-text-dark { fill: var(--on-paint); font-family: var(--font-ui); font-size: 15px; font-weight: 600; }
+.diagram-label { fill: var(--paint-3); font-family: var(--font-ui); font-size: 13px; }
+.diagram-arrow { fill: none; stroke: var(--paint-2); stroke-width: 2; marker-end: url(#arrow); }
+.diagram-arrow-async { fill: none; stroke: var(--yellow); stroke-width: 2; stroke-dasharray: 7 5; marker-end: url(#arrow-yellow); }
+.doc figure.narrow svg { max-width: 360px; margin: 0 auto; }
+/* Wide diagrams keep a readable size on phones and scroll sideways instead of shrinking. */
+.doc figure.wide { overflow-x: auto; }
+.doc figure.wide svg { min-width: 640px; }

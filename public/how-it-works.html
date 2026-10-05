@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#18191b">
+    <meta name="description" content="How Nearline works: location filtering, fading threads, trending, and the system design behind them.">
+    <title>How Nearline Works</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body class="doc">
+    <div class="doc-shell">
+      <header class="doc-header">
+        <span class="painted-mark">Nearline</span>
+        <a class="text-link back-link" href="/">Back to Nearline</a>
+      </header>
+
+      <main>
+        <h1>How Nearline works</h1>
+        <p class="lede">Nearline is a feed of posts from the people physically around you. Nothing here is permanent: a thread fades fifteen minutes after the last thing that happened in it. This page explains every part of how that works, from the hexagons on the map to the machinery that would let it serve a billion people.</p>
+
+        <ol class="toc">
+          <li><a href="#where">1. Where you are: hexagons, not coordinates</a></li>
+          <li><a href="#range">2. How far you listen</a></li>
+          <li><a href="#threads">3. Threads, and why they fade</a></li>
+          <li><a href="#trending">4. What makes a thread trend</a></li>
+          <li><a href="#reposts">5. Reposts carry threads across the map</a></li>
+          <li><a href="#rooms">6. Private filters</a></li>
+          <li><a href="#parts">7. The parts of the system</a></li>
+          <li><a href="#post">8. Following a post</a></li>
+          <li><a href="#like">9. Following a like, and why there is a queue</a></li>
+          <li><a href="#read">10. Reading the feed</a></li>
+          <li><a href="#scale">11. Built for a billion people</a></li>
+          <li><a href="#identity">12. Identity and sign-in</a></li>
+          <li><a href="#privacy">13. What the server knows</a></li>
+          <li><a href="#code">14. Where the code lives</a></li>
+          <li><a href="#glossary">15. Glossary</a></li>
+        </ol>
+
+        <section id="where" aria-labelledby="where-title">
+          <h2 id="where-title">1. Where you are: hexagons, not coordinates</h2>
+          <p>Your phone knows your latitude and longitude to within a few metres. Nearline never sends those numbers anywhere. Instead, your browser converts them into the ID of a hexagon on a map grid called <strong>H3</strong>, made by Uber and used by many mapping systems.</p>
+          <p>H3 covers the whole planet in hexagons at sixteen sizes, called <em>resolutions</em>. Each size fits neatly inside the next size up, like nested tiles. Nearline uses three of them for listening, plus a few larger ones for organising data (section 11):</p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Resolution</th><th>Hexagon edge</th><th>Used for</th></tr></thead>
+              <tbody>
+                <tr><td>11</td><td>about 25 m</td><td>Your position, and the Close range</td></tr>
+                <tr><td>10</td><td>about 66 m</td><td>The Nearby range</td></tr>
+                <tr><td>9</td><td>about 174 m</td><td>The Wide range</td></tr>
+                <tr><td>7 to 9</td><td>about 1.2 km to 174 m</td><td>Partitions: how data is split between servers</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>Your position is always a resolution-11 hexagon, roughly the size of a large house. That is precise enough to know who is near whom, and coarse enough that the server never learns your exact spot.</p>
+        </section>
+
+        <section id="range" aria-labelledby="range-title">
+          <h2 id="range-title">2. How far you listen</h2>
+          <p>You choose a range: Close, Nearby or Wide. Each range picks a hexagon size. Nearline takes the hexagon you are in at that size, plus the six hexagons touching it. Those seven hexagons are your <strong>region</strong>, and you see every post anchored inside it.</p>
+          <figure class="narrow">
+            <svg viewBox="0 0 320 260" role="img" aria-labelledby="region-svg-title">
+              <title id="region-svg-title">A centre hexagon surrounded by six neighbours, forming a region</title>
+              <g transform="translate(160 130)">
+                <polygon class="diagram-faint" transform="translate(69.28 0)" points="0,-40 34.64,-20 34.64,20 0,40 -34.64,20 -34.64,-20"/>
+                <polygon class="diagram-faint" transform="translate(34.64 60)" points="0,-40 34.64,-20 34.64,20 0,40 -34.64,20 -34.64,-20"/>
+                <polygon class="diagram-faint" transform="translate(-34.64 60)" points="0,-40 34.64,-20 34.64,20 0,40 -34.64,20 -34.64,-20"/>
+                <polygon class="diagram-faint" transform="translate(-69.28 0)" points="0,-40 34.64,-20 34.64,20 0,40 -34.64,20 -34.64,-20"/>
+                <polygon class="diagram-faint" transform="translate(-34.64 -60)" points="0,-40 34.64,-20 34.64,20 0,40 -34.64,20 -34.64,-20"/>
+                <polygon class="diagram-faint" transform="translate(34.64 -60)" points="0,-40 34.64,-20 34.64,20 0,40 -34.64,20 -34.64,-20"/>
+                <polygon class="diagram-paint" points="0,-40 34.64,-20 34.64,20 0,40 -34.64,20 -34.64,-20"/>
+                <circle class="diagram-fill" r="6"/>
+                <text class="diagram-text" x="0" y="26" text-anchor="middle">you</text>
+              </g>
+            </svg>
+            <figcaption>Your region at any range: the hexagon you are in (solid) and its six neighbours (dashed). A post is visible to you when its location falls inside these seven hexagons at your range's size.</figcaption>
+          </figure>
+          <p>This rule is symmetric: if you can see someone's post, they can see yours at the same range. It is also the only definition of "nearby" in the whole system. The browser, the feed and the check that decides whether you may reply all use the same function.</p>
+          <p>The lane line under the range picker encodes your range the way road markings do: short dashes for Close, long dashes for Wide, like the markings on slow and fast roads.</p>
+        </section>
+
+        <section id="threads" aria-labelledby="threads-title">
+          <h2 id="threads-title">3. Threads, and why they fade</h2>
+          <p>A <strong>thread</strong> is a post and everything under it: replies, replies to replies at any depth, likes and reposts. The thread is the unit that lives and dies together.</p>
+          <p>Every thread has an expiry time: <strong>fifteen minutes after its last activity</strong>. Activity means a new reply, a like, or a repost. Each one pushes the expiry fifteen minutes into the future. Reading a thread does not. Unliking or deleting does not. When the clock runs out, the whole thread is deleted from the servers, every reply with it.</p>
+          <figure class="wide">
+            <svg viewBox="0 0 700 150" role="img" aria-labelledby="life-svg-title">
+              <title id="life-svg-title">A timeline where each activity resets a fifteen-minute expiry</title>
+              <line class="diagram-faint" x1="20" y1="70" x2="680" y2="70"/>
+              <circle class="diagram-fill" cx="40" cy="70" r="7"/>
+              <text class="diagram-text" x="40" y="45" text-anchor="middle">post</text>
+              <circle class="diagram-fill" cx="190" cy="70" r="7"/>
+              <text class="diagram-text" x="190" y="45" text-anchor="middle">reply</text>
+              <circle class="diagram-fill" cx="300" cy="70" r="7"/>
+              <text class="diagram-text" x="300" y="45" text-anchor="middle">like</text>
+              <line class="diagram-yellow" x1="300" y1="100" x2="640" y2="100"/>
+              <line class="diagram-yellow" x1="640" y1="88" x2="640" y2="112"/>
+              <text class="diagram-label" x="470" y="128" text-anchor="middle">15 minutes after the last activity</text>
+              <text class="diagram-text" x="640" y="45" text-anchor="middle">gone</text>
+            </svg>
+            <figcaption>The post's own expiry was replaced by the reply's, then by the like's. Fifteen quiet minutes after the like, the thread disappears for everyone.</figcaption>
+          </figure>
+          <p>In the app, the thin line under each post is that clock. It shrinks as the thread goes quiet and snaps back to full whenever someone interacts.</p>
+          <h3>Replies form a tree</h3>
+          <p>You can reply to a post or to any reply. The thread view indents each level with a dashed guide. After four levels, "Continue thread" re-centres the view on that reply so deep conversations stay readable on a phone.</p>
+          <h3>Deleting</h3>
+          <p>You can delete your own posts. A post nobody replied to disappears. A post with replies becomes "[deleted]" so the conversation under it still makes sense. Deleting the opening post of a thread nobody replied to removes the whole thread.</p>
+        </section>
+
+        <section id="trending" aria-labelledby="trending-title">
+          <h2 id="trending-title">4. What makes a thread trend</h2>
+          <p>The Latest tab is simple: newest first. The Trending tab ranks threads by how much is happening in them <em>right now</em>.</p>
+          <h3>Weights</h3>
+          <p>In 2023 X (formerly Twitter) published the source of its recommendation algorithm. Its main ranking stage scores a post by adding up the chance of each kind of engagement multiplied by a fixed weight. Nearline borrows the relative sizes of those weights:</p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Engagement</th><th>X's weight</th><th>Nearline's points</th></tr></thead>
+              <tbody>
+                <tr><td>Like</td><td>0.5</td><td>1</td></tr>
+                <tr><td>Repost</td><td>1.0</td><td>2</td></tr>
+                <tr><td>Reply</td><td>13.5</td><td>27</td></tr>
+                <tr><td>The author replies in their own thread</td><td>75</td><td>150</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>A reply is worth 27 likes because it costs more effort and starts a conversation. The author replying back is worth the most because it is the strongest sign a conversation is really happening.</p>
+          <h3>Fairness rules</h3>
+          <ul>
+            <li>Each person counts once per kind of engagement per thread. Ten replies from one person score as one reply. Liking, unliking and liking again scores once.</li>
+            <li>An author's own replies only score after someone else has replied, so nobody can make their own post trend by talking to themselves.</li>
+            <li>A thread needs at least two different people involved to appear in Trending at all.</li>
+          </ul>
+          <h3>Decay</h3>
+          <p>Points fade: a thread's score halves every five minutes. A burst of activity lifts a thread to the top, and it drifts down as the burst ends. Only what is happening now matters.</p>
+          <h3>The trick that makes it cheap</h3>
+          <p>Decaying scores sound expensive: every score changes every second, so the order would seem to need recomputing constantly. It does not. Because every score fades at the same rate, the order between two threads never changes unless one of them gets new activity. Mathematically, ranking by <code>score × 2^(−age / 5 minutes)</code> gives the same order as ranking by <code>log₂(score) + (time of last update) / 5 minutes</code>, a number that stays fixed. Nearline stores that fixed number and lets the database sort by it. Trending costs the same as sorting by date.</p>
+        </section>
+
+        <section id="reposts" aria-labelledby="reposts-title">
+          <h2 id="reposts-title">5. Reposts carry threads across the map</h2>
+          <p>Nearline has no followers, so a repost cannot mean "show this to my followers". Instead, reposting carries a thread to <strong>where you are standing</strong>.</p>
+          <p>Every thread has one or more <strong>anchors</strong>: places it is shown from. The original post is the first anchor. Each repost adds an anchor at the reposter's location. You see a thread when any of its anchors is inside your region. A thread can travel: someone a few streets away reposts it, then someone near them reposts it again, and it spreads hand to hand as long as people keep it alive.</p>
+          <p>You can only repost a thread you can currently see, and only once.</p>
+        </section>
+
+        <section id="rooms" aria-labelledby="rooms-title">
+          <h2 id="rooms-title">6. Private filters</h2>
+          <p>A private filter is a room ID and a passphrase. Your browser turns the pair into a fingerprint with SHA-256 and attaches it to everything you post and read. Only people nearby using the same pair see those threads, and you see only theirs. There is no list of rooms, no members and no owner: a room exists only as long as people use the same words.</p>
+          <p>A private filter is an organising tool, not encryption. Anyone who guesses the same room ID and passphrase sees the same threads, and the server can see post text like any other post.</p>
+        </section>
+
+        <section id="parts" aria-labelledby="parts-title">
+          <h2 id="parts-title">7. The parts of the system</h2>
+          <p>Nearline runs on Cloudflare. Each part has one job, and each is split up independently so that no single machine has to handle everyone.</p>
+          <figure class="wide">
+            <svg viewBox="0 0 760 470" role="img" aria-labelledby="parts-svg-title">
+              <title id="parts-svg-title">Architecture: browser, edge worker, stores, queue and cache</title>
+              <defs>
+                <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#c9c7be"/></marker>
+                <marker id="arrow-yellow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#f2c230"/></marker>
+              </defs>
+              <rect class="diagram-box-strong" x="290" y="14" width="180" height="50" rx="3"/>
+              <text class="diagram-text-dark" x="380" y="45" text-anchor="middle">Your browser</text>
+              <path class="diagram-arrow" d="M380 66 V108"/>
+              <text class="diagram-label" x="392" y="92">HTTPS polls and actions</text>
+              <rect class="diagram-box" x="160" y="110" width="440" height="64" rx="3"/>
+              <text class="diagram-text" x="380" y="138" text-anchor="middle">Edge Worker (runs in every Cloudflare city)</text>
+              <text class="diagram-label" x="380" y="160" text-anchor="middle">checks sign-in · validates · rate-limits · builds feeds · caches</text>
+              <rect class="diagram-box" x="630" y="118" width="116" height="48" rx="3"/>
+              <text class="diagram-text" x="688" y="147" text-anchor="middle">Edge cache</text>
+              <path class="diagram-arrow" d="M602 142 H628"/>
+              <path class="diagram-arrow" d="M230 176 V250"/>
+              <path class="diagram-arrow" d="M380 176 V250"/>
+              <path class="diagram-arrow" d="M530 176 V250"/>
+              <rect class="diagram-box" x="150" y="252" width="160" height="70" rx="3"/>
+              <text class="diagram-text" x="230" y="282" text-anchor="middle">Thread stores</text>
+              <text class="diagram-label" x="230" y="304" text-anchor="middle">one per thread</text>
+              <rect class="diagram-box" x="320" y="252" width="120" height="70" rx="3"/>
+              <text class="diagram-text" x="380" y="282" text-anchor="middle">Cell indexes</text>
+              <text class="diagram-label" x="380" y="304" text-anchor="middle">one per area</text>
+              <rect class="diagram-box" x="450" y="252" width="160" height="70" rx="3"/>
+              <text class="diagram-text" x="530" y="282" text-anchor="middle">User state</text>
+              <text class="diagram-label" x="530" y="304" text-anchor="middle">65,536 buckets</text>
+              <rect class="diagram-box" x="230" y="388" width="300" height="56" rx="3"/>
+              <text class="diagram-text" x="380" y="421" text-anchor="middle">Queue: follow-on changes</text>
+              <path class="diagram-arrow-async" d="M230 324 V386"/>
+              <path class="diagram-arrow-async" d="M530 324 V386"/>
+              <path class="diagram-arrow-async" d="M380 386 V326"/>
+              <path class="diagram-arrow-async" d="M300 386 C 300 360, 260 350, 250 326"/>
+              <rect class="diagram-box" x="20" y="252" width="110" height="70" rx="3"/>
+              <text class="diagram-text" x="75" y="282" text-anchor="middle">D1</text>
+              <text class="diagram-label" x="75" y="304" text-anchor="middle">passkeys</text>
+              <path class="diagram-arrow" d="M170 176 C 120 200, 90 220, 80 250"/>
+            </svg>
+            <figcaption>Solid arrows are requests the browser waits for. Dashed yellow arrows are follow-on changes delivered through the queue a second or two later.</figcaption>
+          </figure>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Part</th><th>Split by</th><th>Its job</th></tr></thead>
+              <tbody>
+                <tr><td>Edge Worker</td><td>Not split: it keeps no data</td><td>Receives every request, checks who you are, rejects bad input, limits how fast anyone can act, assembles feeds and caches them.</td></tr>
+                <tr><td>Thread store</td><td>One per thread</td><td>The single, authoritative copy of a thread: its posts, reply tree, counts, score and expiry. It deletes itself when the thread expires.</td></tr>
+                <tr><td>Cell index</td><td>One per area of the map</td><td>A list of references: "thread T is anchored at place P, scores this much, expires then." It never holds post text.</td></tr>
+                <tr><td>User state</td><td>65,536 buckets of users</td><td>Remembers what each person liked and reposted, so "did I already like this?" never touches a busy thread.</td></tr>
+                <tr><td>Queue</td><td>Batches</td><td>Carries follow-on changes between the parts reliably, retrying until each one lands.</td></tr>
+                <tr><td>Edge cache</td><td>Per Cloudflare city</td><td>Keeps finished feeds for 3 seconds and threads for 2, so most requests are answered without touching any store.</td></tr>
+                <tr><td>D1 database</td><td>One</td><td>Accounts, passkeys and long-lived sign-in sessions. Never post content.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>The thread stores, cell indexes and user state are <strong>Durable Objects</strong>: small Cloudflare servers, each with its own private SQLite database, that exist only while they have something to hold. There can be billions of them, and each one handles only its own slice of the work.</p>
+          <div class="note">The key idea: <strong>every thread has exactly one source of truth</strong>, its thread store. Everything else either points at it (cell indexes) or is a short-lived copy (the cache).</div>
+        </section>
+
+        <section id="post" aria-labelledby="post-title">
+          <h2 id="post-title">8. Following a post</h2>
+          <ol class="steps">
+            <li>You type and press Post. Your browser shows the post at once with a dashed outline, before the server has answered.</li>
+            <li>The browser sends the text, your resolution-11 hexagon, your range and your room fingerprint to <code>POST /api/actions</code>.</li>
+            <li>The Edge Worker checks your sign-in token, the text length and your rate limit.</li>
+            <li>It invents a new ID for the thread and creates its thread store, asking Cloudflare to place it in a data centre near you.</li>
+            <li>The thread store saves the post, sets the expiry to fifteen minutes from now, and sets an alarm for that moment.</li>
+            <li>It puts a note on the queue: "add a reference to this thread in the area index covering this hexagon".</li>
+            <li>The browser receives the new ID and swaps its placeholder for the real post.</li>
+            <li>A second or two later, the queue delivers the note and the cell index records the reference. From then on, anyone whose region includes your hexagon sees the post on their next refresh.</li>
+          </ol>
+        </section>
+
+        <section id="like" aria-labelledby="like-title">
+          <h2 id="like-title">9. Following a like, and why there is a queue</h2>
+          <p>A like has to change three places: your user state ("you liked this"), the thread store (the count and the score) and every cell index that points at the thread (so Trending re-orders and the expiry moves).</p>
+          <p>Doing all of that while you wait would be slow, and fragile: if the third step failed, the like would be half-recorded forever. On a post going viral, it would also send a hundred thousand separate updates a second into one thread store, which no single server can absorb.</p>
+          <ol class="steps">
+            <li>Your tap changes your own screen immediately.</li>
+            <li>The Edge Worker asks your user state bucket to record the like. This is the one step that must be exact, so a double tap cannot count twice. It also reports whether this is your first like anywhere in this thread, which is what decides if it scores.</li>
+            <li>The Worker puts a note on the queue: "thread T, post P, +1, first like: yes" and answers your browser.</li>
+            <li>A background consumer collects notes in batches of up to 100, groups them by thread, and makes <strong>one</strong> call per thread: "+87 likes, 80 of them first likes".</li>
+            <li>The thread store applies the batch, updates the score and expiry, and leaves one note per area index: "thread T now scores this much and expires then".</li>
+            <li>The consumer delivers those to the cell indexes, again batched.</li>
+          </ol>
+          <h3>Duplicates and disorder</h3>
+          <p>The queue guarantees every note arrives at least once, but a note may arrive twice, and notes may arrive out of order. Every store remembers the IDs of notes it has applied for twenty minutes and ignores repeats. Counts are stored as plus-one and minus-one changes, which add up correctly in any order, so an unlike that arrives before its like still ends at the right number. When a thread expires, each area index keeps a short "tombstone" so a late note cannot bring it back.</p>
+        </section>
+
+        <section id="read" aria-labelledby="read-title">
+          <h2 id="read-title">10. Reading the feed</h2>
+          <p>Nearline never pushes anything to your phone. Your browser asks for updates: every 5 seconds for the feed, every 3 seconds for an open thread. After a minute with no change it slows down, doubling the wait up to 30 seconds. While the tab is hidden it stops. This is called <strong>polling</strong>, and it is how X's own timeline works.</p>
+          <h3>Why polling scales</h3>
+          <p>Everyone standing in the same hexagon, at the same range, in the same room, sees exactly the same feed. So the request does not include your exact position, only the hexagon at your range's size, and the answer can be shared. The first person to ask in each Cloudflare city builds the feed; everyone else for the next 3 seconds gets the cached copy. A stadium of 80,000 people costs about as much as one person.</p>
+          <p>Each response carries a version tag. When your browser asks again, it sends the tag it already has. If nothing changed, the server answers "304 Not Modified" with no content at all.</p>
+          <h3>Building a feed</h3>
+          <ol class="steps">
+            <li>Work out your seven region hexagons and which area indexes cover them (usually one or two).</li>
+            <li>Ask each area index for its references in those hexagons, newest first or by trend, already filtered for expiry and room.</li>
+            <li>Merge the lists, keeping each thread once, through its newest anchor you can see.</li>
+            <li>Fetch the thirty threads' summaries from their thread stores, through a 2-second cache.</li>
+            <li>Cache the result for 3 seconds and send it.</li>
+          </ol>
+          <p>Your own likes and reposts are fetched separately from your user state, never cached for others, and only for threads your browser has not asked about before.</p>
+        </section>
+
+        <section id="scale" aria-labelledby="scale-title">
+          <h2 id="scale-title">11. Built for a billion people</h2>
+          <p>Nearline will probably never have a billion users, but it was designed so that it could. At that size the hard part is not the total number of people. It is that they bunch up: a stadium, a viral post, the centre of Tokyo.</p>
+          <h3>A stadium</h3>
+          <p>Eighty thousand people in one hexagon all poll the same cached feed. The area index behind it sees roughly one request every three seconds per Cloudflare city.</p>
+          <h3>A viral thread</h3>
+          <p>A hundred thousand likes a second land in 65,536 different user-state buckets, spread by a hash of each person's ID. The thread store itself receives a few batched updates a second from the queue.</p>
+          <h3>A dense city: areas that split themselves</h3>
+          <p>References are stored in area indexes, each responsible for one hexagon of the map. By default that hexagon is resolution 7, about five square kilometres. Each area index counts its reads and writes every minute. If it stays above 600 writes or 30,000 reads a minute for five minutes in a row, it splits into its seven smaller children (resolution 8), and those can split again down to resolution 9. When all the children stay below a quarter of those limits for thirty minutes, they merge back.</p>
+          <figure class="wide">
+            <svg viewBox="0 0 640 220" role="img" aria-labelledby="split-svg-title">
+              <title id="split-svg-title">One busy hexagon splitting into seven smaller hexagons</title>
+              <g transform="translate(130 110)">
+                <polygon class="diagram-paint" points="0,-80 69.28,-40 69.28,40 0,80 -69.28,40 -69.28,-40"/>
+                <text class="diagram-text" x="0" y="6" text-anchor="middle">busy area</text>
+              </g>
+              <path class="diagram-arrow" d="M240 110 H360"/>
+              <text class="diagram-label" x="300" y="96" text-anchor="middle">split</text>
+              <g transform="translate(500 110)">
+                <polygon class="diagram-paint" points="0,-28 24.25,-14 24.25,14 0,28 -24.25,14 -24.25,-14"/>
+                <polygon class="diagram-paint" transform="translate(48.5 0)" points="0,-28 24.25,-14 24.25,14 0,28 -24.25,14 -24.25,-14"/>
+                <polygon class="diagram-paint" transform="translate(24.25 42)" points="0,-28 24.25,-14 24.25,14 0,28 -24.25,14 -24.25,-14"/>
+                <polygon class="diagram-paint" transform="translate(-24.25 42)" points="0,-28 24.25,-14 24.25,14 0,28 -24.25,14 -24.25,-14"/>
+                <polygon class="diagram-paint" transform="translate(-48.5 0)" points="0,-28 24.25,-14 24.25,14 0,28 -24.25,14 -24.25,-14"/>
+                <polygon class="diagram-paint" transform="translate(-24.25 -42)" points="0,-28 24.25,-14 24.25,14 0,28 -24.25,14 -24.25,-14"/>
+                <polygon class="diagram-paint" transform="translate(24.25 -42)" points="0,-28 24.25,-14 24.25,14 0,28 -24.25,14 -24.25,-14"/>
+              </g>
+            </svg>
+            <figcaption>A busy area becomes seven areas, each with its own index and its own share of the work.</figcaption>
+          </figure>
+          <p>Splitting normally means moving data, which is slow and risky. Nearline avoids it entirely because nothing lives longer than fifteen minutes after its last update. After a split, new references go to the new areas, while readers check both the old and the new areas for sixteen minutes. By then everything in the old area has expired on its own.</p>
+          <h3>Sign-in without a database lookup</h3>
+          <p>Checking a database on every poll would make the account database the bottleneck. Instead, each sign-in also issues a <strong>signed access token</strong> valid for an hour. The Edge Worker verifies its signature mathematically, with no lookup. Once an hour, a longer-lived session in D1 is checked and a new token issued.</p>
+          <h3>Keeping data near its people</h3>
+          <p>A local product is naturally regional. Thread stores and area indexes are created in the Cloudflare region closest to their place on the map, so Tokyo's posts live in Asia and São Paulo's in South America.</p>
+        </section>
+
+        <section id="identity" aria-labelledby="identity-title">
+          <h2 id="identity-title">12. Identity and sign-in</h2>
+          <p>There are no usernames or passwords. You sign in with a <strong>passkey</strong>: a key pair your device creates and guards with your fingerprint, face or PIN. The server stores only the public half. Your public identity is the first eight characters of a hash of that public key, like <code>@4f92ac17</code>. Its coloured square, the "road stud", is derived from the same characters, so you can tell people apart without profiles.</p>
+          <p>Signing out deletes your long-lived session at once. An access token already issued stays valid until it expires, at most an hour later: the price of checking tokens without a database.</p>
+        </section>
+
+        <section id="privacy" aria-labelledby="privacy-title">
+          <h2 id="privacy-title">13. What the server knows</h2>
+          <ul>
+            <li><strong>Never:</strong> your latitude and longitude. They stay in your browser.</li>
+            <li><strong>When you post or repost:</strong> the resolution-11 hexagon you were in, about 25 metres across. It is stored with the thread and deleted when the thread expires.</li>
+            <li><strong>When you read:</strong> only the hexagon at your range's size, which is coarser.</li>
+            <li><strong>Post text:</strong> stored until the thread expires, then deleted with it. Nothing is archived.</li>
+            <li><strong>Your likes and reposts:</strong> kept in your user-state bucket for 24 hours so you cannot like the same thing twice, then deleted.</li>
+            <li><strong>Your account:</strong> your passkey's public key and your sign-in sessions.</li>
+          </ul>
+        </section>
+
+        <section id="code" aria-labelledby="code-title">
+          <h2 id="code-title">14. Where the code lives</h2>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Folder or file</th><th>What it does</th></tr></thead>
+              <tbody>
+                <tr><td><code>packages/geo</code></td><td>Every use of the H3 hexagon library: positions, regions, the visibility rule.</td></tr>
+                <tr><td><code>packages/feed</code></td><td>Pure logic: trending scores, reply trees, partitions, feed ordering, location hints.</td></tr>
+                <tr><td><code>packages/protocol</code></td><td>The shapes of every request and response, and their validation.</td></tr>
+                <tr><td><code>packages/shared</code></td><td>Constants (every number on this page), encodings, IDs and access tokens.</td></tr>
+                <tr><td><code>workers/edge/api</code></td><td>The HTTP endpoints: feed, thread, engagement and actions.</td></tr>
+                <tr><td><code>workers/edge/stores</code></td><td>All the SQL, tested against a real SQLite engine.</td></tr>
+                <tr><td><code>workers/edge/durable-objects</code></td><td>The thin Durable Object classes around the stores, and area splitting.</td></tr>
+                <tr><td><code>workers/edge/queue</code></td><td>The batching consumer for follow-on changes.</td></tr>
+                <tr><td><code>apps/web</code></td><td>The browser app: polling, state, rendering.</td></tr>
+                <tr><td><code>docs/superpowers/specs</code></td><td>The design documents this was built from.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="glossary" aria-labelledby="glossary-title">
+          <h2 id="glossary-title">15. Glossary</h2>
+          <div class="table-wrap">
+            <table>
+              <tbody>
+                <tr><th scope="row">Anchor</th><td>A place a thread is shown from: the original post, or a repost.</td></tr>
+                <tr><th scope="row">Cell index</th><td>The list of thread references for one area of the map.</td></tr>
+                <tr><th scope="row">Durable Object</th><td>A small Cloudflare server with its own database, created on demand, one per thread, area or user bucket.</td></tr>
+                <tr><th scope="row">Edge</th><td>Cloudflare's servers in hundreds of cities, close to wherever you are.</td></tr>
+                <tr><th scope="row">H3</th><td>A grid of hexagons covering the planet at sixteen sizes.</td></tr>
+                <tr><th scope="row">Half-life</th><td>The time it takes a trending score to fall by half: five minutes.</td></tr>
+                <tr><th scope="row">Idempotent</th><td>Safe to apply twice: the second time changes nothing.</td></tr>
+                <tr><th scope="row">Partition</th><td>The area of the map one cell index is responsible for.</td></tr>
+                <tr><th scope="row">Polling</th><td>The browser asking for updates on a timer, rather than the server pushing them.</td></tr>
+                <tr><th scope="row">Queue</th><td>A reliable to-do list between parts of the system, retried until each item succeeds.</td></tr>
+                <tr><th scope="row">Reference</th><td>A cell index row pointing at a thread. Never a copy of its content.</td></tr>
+                <tr><th scope="row">Region</th><td>Your hexagon at your range's size, plus its six neighbours.</td></tr>
+                <tr><th scope="row">Source of truth</th><td>The one place whose copy wins. For a thread, its thread store.</td></tr>
+                <tr><th scope="row">Tombstone</th><td>A short-lived marker that a thread expired, so late changes cannot revive it.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

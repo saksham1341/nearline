@@ -11,6 +11,7 @@ import {
 import { bytesToHex, sha256 } from "../../packages/shared/encoding.ts";
 import { fetchEngagement, fetchFeed, fetchThread, sendAction } from "./api.ts";
 import { FeedState } from "./feed-state.ts";
+import { LatestOnly } from "./latest-only.ts";
 import { Poller } from "./poller.ts";
 import { refreshTimes, renderFeed } from "./render-feed.ts";
 import { renderThread } from "./render-thread.ts";
@@ -82,6 +83,17 @@ const ERROR_COPY: Partial<Record<ErrorCode, string>> = {
 const state = new FeedState();
 const feedPoller = new Poller(POLL_FEED_MS, pollFeed);
 const threadPoller = new Poller(POLL_THREAD_MS, pollThread);
+/** Likes for one post go out one at a time, ending on the user's last choice. Key: `${threadId}|${postId}`. */
+const likeSender = new LatestOnly<boolean>(async (key, on) => {
+  const [threadId, postId] = key.split("|") as [string, string];
+  const result = await sendAction({ id: crypto.randomUUID(), type: "like", ...viewerFields(), threadId, postId, on });
+  // Roll back only if the screen still shows the choice that failed.
+  if (!result.ok && state.likedPosts.has(postId) === on) {
+    state.setLiked(postId, !on, serverLikeCount(threadId, postId), state.now());
+    handleActionError(result.code);
+    scheduleRender();
+  }
+});
 
 let currentLocation = "";
 let currentAuthor = "";
@@ -483,12 +495,7 @@ async function toggleLike(threadId: string, postId: string): Promise<void> {
   const on = !state.likedPosts.has(postId);
   state.setLiked(postId, on, serverLikeCount(threadId, postId), state.now());
   scheduleRender();
-  const result = await sendAction({ id: crypto.randomUUID(), type: "like", ...viewerFields(), threadId, postId, on });
-  if (!result.ok) {
-    state.setLiked(postId, !on, serverLikeCount(threadId, postId), state.now());
-    handleActionError(result.code);
-    scheduleRender();
-  }
+  await likeSender.set(`${threadId}|${postId}`, on);
 }
 
 function serverLikeCount(threadId: string, postId: string): number {

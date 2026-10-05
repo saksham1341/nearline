@@ -112,6 +112,7 @@ const SCHEMA = [
     -- This post's own last activity. Branch expiry is derived from these (see branchExpiries).
     active_at INTEGER NOT NULL
   )`,
+  "CREATE INDEX IF NOT EXISTS posts_active ON posts(active_at)",
   "CREATE TABLE IF NOT EXISTS participants (user_id TEXT PRIMARY KEY)",
   "CREATE TABLE IF NOT EXISTS repliers (user_id TEXT PRIMARY KEY)",
   "CREATE TABLE IF NOT EXISTS reply_engagements (user_id TEXT NOT NULL, kind TEXT NOT NULL, PRIMARY KEY (user_id, kind))",
@@ -308,6 +309,10 @@ export class ThreadDb {
    */
   pruneBranches(now: number): number {
     if (!this.hasSchema() || !this.row()) return 0;
+    // A branch expires no earlier than its oldest own-activity + TTL, so if even the oldest activity in
+    // the thread is recent, nothing can have faded and the tree walk is skipped (one indexed lookup).
+    const oldest = this.sql.exec<{ at: number | null }>("SELECT MIN(active_at) AS at FROM posts").toArray()[0]?.at;
+    if (oldest === null || oldest === undefined || Number(oldest) + THREAD_TTL_MS > now) return 0;
     const rootId = this.row()!.id;
     const faded = [...this.branchExpiryMap()].filter(([id, expiresAt]) => id !== rootId && expiresAt <= now).map(([id]) => id);
     for (const id of faded) this.sql.exec("DELETE FROM posts WHERE id = ?", id);

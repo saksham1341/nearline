@@ -22,22 +22,35 @@
   ],
   "durable_objects": {
     "bindings": [
-      { "name": "GEO_SHARD", "class_name": "GeoShardLive" }
+      { "name": "THREAD_STORE", "class_name": "ThreadStore" },
+      { "name": "CELL_INDEX", "class_name": "CellIndex" },
+      { "name": "USER_STATE", "class_name": "UserState" }
     ]
   },
   "exports": {
-    "GeoShardLive": { "type": "durable-object", "storage": "sqlite" }
+    "GeoShardLive": { "type": "durable-object", "state": "deleted" },
+    "ThreadStore": { "type": "durable-object", "storage": "sqlite" },
+    "CellIndex": { "type": "durable-object", "storage": "sqlite" },
+    "UserState": { "type": "durable-object", "storage": "sqlite" }
   },
+  "queues": {
+    "producers": [{ "binding": "FEED_EVENTS", "queue": "nearline-feed-events" }],
+    "consumers": [{ "queue": "nearline-feed-events", "max_batch_size": 100, "max_batch_timeout": 1, "max_retries": 10 }]
+  },
+  "kv_namespaces": [
+    { "binding": "PARTITION_MAP", "id": "REPLACE_WITH_PARTITION_MAP_ID" }
+  ],
+  "ratelimits": [
+    { "name": "MESSAGE_LIMITER", "namespace_id": "1002", "simple": { "limit": 20, "period": 10 } },
+    { "name": "REGISTER_LIMITER", "namespace_id": "1003", "simple": { "limit": 3, "period": 60 } },
+    { "name": "LIKE_LIMITER", "namespace_id": "1004", "simple": { "limit": 30, "period": 10 } },
+    { "name": "READ_LIMITER", "namespace_id": "1005", "simple": { "limit": 120, "period": 60 } }
+  ],
+  "triggers": { "crons": ["17 * * * *"] },
   "vars": {
     "RP_NAME": "Nearline",
     "RP_ID": "nearline.sxm.li",
     "ORIGIN": "https://nearline.sxm.li"
   },
-  "ratelimits": [
-    { "name": "CONNECT_LIMITER", "namespace_id": "1001", "simple": { "limit": 20, "period": 60 } },
-    { "name": "MESSAGE_LIMITER", "namespace_id": "1002", "simple": { "limit": 20, "period": 10 } },
-    { "name": "REGISTER_LIMITER", "namespace_id": "1003", "simple": { "limit": 3, "period": 60 } }
-  ],
-  "triggers": { "crons": ["17 * * * *"] },
   "observability": { "enabled": true }
 }

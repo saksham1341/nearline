@@ -1,16 +1,19 @@
+import type { FeedEvent } from "./events.ts";
+
 export interface Env {
   DB: D1Database;
-  GEO_SHARD: DurableObjectNamespace;
   ASSETS: Fetcher;
-  /** Per-user socket creation, across all shards. */
-  CONNECT_LIMITER: RateLimit;
-  /** Per-user message sends, across all shards; each shard also keeps a smoothing bucket. */
+  THREAD_STORE: DurableObjectNamespace;
+  CELL_INDEX: DurableObjectNamespace;
+  USER_STATE: DurableObjectNamespace;
+  FEED_EVENTS: Queue<FeedEvent>;
+  PARTITION_MAP: KVNamespace;
   MESSAGE_LIMITER: RateLimit;
-  /** Per-IP passkey registration, since new accounts have no identity to key on yet. */
+  LIKE_LIMITER: RateLimit;
+  READ_LIMITER: RateLimit;
   REGISTER_LIMITER: RateLimit;
   RP_NAME: string;
   RP_ID: string;
   ORIGIN: string;
   SESSION_KEY: string;
 }
-

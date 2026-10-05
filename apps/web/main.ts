@@ -55,7 +55,7 @@ const elements = {
   toast: required<HTMLElement>("toast"),
 };
 
-const scopeButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-scope]"));
+const scopeButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("button[data-scope]"));
 const tabButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-tab]"));
 const roomButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-room-button]"));
 const authorLabels = Array.from(document.querySelectorAll<HTMLElement>("[data-author-label]"));
@@ -64,6 +64,8 @@ const syncLabels = Array.from(document.querySelectorAll<HTMLElement>("[data-sync
 const logoutButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-logout]"));
 const identityMenus = Array.from(document.querySelectorAll<HTMLDetailsElement>("[data-identity-menu]"));
 const themeButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-theme-choice]"));
+const scopeOpeners = Array.from(document.querySelectorAll<HTMLButtonElement>(".scope-button"));
+const rangeDialog = document.getElementById("range-dialog") as HTMLDialogElement | null;
 
 const scopeCopy: Record<ProximityScope, string> = { 11: "Close", 10: "Nearby", 9: "Wide" };
 
@@ -144,7 +146,13 @@ function bindEvents(): void {
     });
   }
   for (const button of tabButtons) button.addEventListener("click", () => selectTab(button.dataset.tab as FeedTab));
-  for (const button of roomButtons) button.addEventListener("click", openRoomDialog);
+  for (const button of roomButtons) {
+    button.addEventListener("click", () => {
+      for (const menu of identityMenus) menu.open = false;
+      openRoomDialog();
+    });
+  }
+  for (const button of scopeOpeners) button.addEventListener("click", () => rangeDialog?.showModal());
   for (const button of logoutButtons) button.addEventListener("click", () => void logout());
   for (const button of themeButtons) button.addEventListener("click", () => setTheme(button.dataset.themeChoice as ThemeChoice));
   showTheme();
@@ -773,7 +781,7 @@ function hideNewPosts(): void {
 function applyScopeVisuals(): void {
   const scope = scopeCopy[currentScope];
   document.documentElement.dataset.scope = String(currentScope);
-  elements.scopeStatus.textContent = currentRoomTag ? `${scope} · private filter` : scope;
+  elements.scopeStatus.textContent = scope;
   elements.desktopViewStatus.textContent = `${currentRoomTag ? "Private filter" : "Public"} · ${scope}`;
   elements.desktopViewDescription.textContent = currentRoomTag ? "Private filter active" : "Open local feed";
   for (const button of scopeButtons) {
@@ -791,7 +799,7 @@ async function enterRoom(): Promise<void> {
   joined.set(roomBytes, 0);
   joined.set(passphraseBytes, roomBytes.length + 1);
   currentRoomTag = bytesToHex(await sha256(joined));
-  setRoomButtonLabel("Private");
+  setRoomButtonLabel("Private feed settings");
   for (const button of roomButtons) button.classList.add("active");
   document.documentElement.classList.add("room-active");
   elements.input.placeholder = "Post to this filter…";
@@ -804,7 +812,7 @@ async function enterRoom(): Promise<void> {
 
 function leaveRoom(): void {
   currentRoomTag = "";
-  setRoomButtonLabel("Public");
+  setRoomButtonLabel("Private feed…");
   for (const button of roomButtons) button.classList.remove("active");
   document.documentElement.classList.remove("room-active");
   elements.input.placeholder = "Post nearby…";

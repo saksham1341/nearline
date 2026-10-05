@@ -37,66 +37,49 @@
 
     <main id="chat-view" class="app" hidden>
       <header class="frame" aria-label="Nearline controls">
-        <div class="frame-top">
+        <div class="appbar-row">
           <div class="brand">
             <p class="wordmark">Nearline<span class="wordmark-line">what's happening here</span></p>
+            <button class="scope-button" type="button" aria-haspopup="dialog" aria-controls="range-dialog">
+              <span class="scope-private">Private ·</span>
+              <span id="scope-status">Nearby</span>
+              <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
+              <span class="sr-only">, change how far you're listening</span>
+            </button>
             <p class="status-line" aria-live="polite" aria-atomic="true">
               <span class="status-dot" data-sync-dot aria-hidden="true"></span>
-              <span id="scope-status">Nearby</span>
-              <span class="status-separator" aria-hidden="true">·</span>
               <span class="status-label" data-sync-label>Connecting…</span>
             </p>
           </div>
-          <div class="frame-actions">
-            <button class="room-toggle" data-room-button type="button" aria-haspopup="dialog" aria-controls="room-dialog">
-              <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>
-              <span data-room-button-label>Public</span>
-            </button>
-            <details class="identity-menu" data-identity-menu>
-              <summary aria-label="Identity and settings">
-                <span class="identity" data-author-label>@--------</span>
-                <svg class="icon chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
-              </summary>
-              <div class="identity-popover">
-                <span class="identity-popover-label">Signed in with passkey</span>
-                <div class="theme-switch" role="group" aria-label="Theme">
-                  <button type="button" data-theme-choice="system" aria-pressed="true">System</button>
-                  <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
-                  <button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
-                </div>
-                <a class="popover-link" href="/how-it-works.html">How Nearline works</a>
-                <button data-logout type="button">Log out</button>
+          <details class="identity-menu" data-identity-menu>
+            <summary aria-label="Menu">
+              <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="3" r="1.2"/><circle cx="8" cy="8" r="1.2"/><circle cx="8" cy="13" r="1.2"/></svg>
+            </summary>
+            <div class="identity-popover">
+              <span class="identity-popover-label">Signed in as <span class="identity" data-author-label>@--------</span></span>
+              <button class="room-toggle" data-room-button type="button" aria-haspopup="dialog" aria-controls="room-dialog">
+                <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>
+                <span data-room-button-label>Private feed…</span>
+              </button>
+              <div class="theme-switch" role="group" aria-label="Theme">
+                <button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+                <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+                <button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
               </div>
-            </details>
-          </div>
+              <a class="popover-link" href="/how-it-works.html">How Nearline works</a>
+              <button data-logout type="button">Log out</button>
+            </div>
+          </details>
         </div>
-
-        <section class="range" aria-labelledby="range-heading">
-          <h2 id="range-heading" class="range-heading">How far you're listening</h2>
-          <div class="range-control" role="group" aria-labelledby="range-heading">
-            <button type="button" data-scope="11" aria-pressed="false"><span>Close</span><small>a block</small></button>
-            <button type="button" data-scope="10" aria-pressed="true"><span>Nearby</span><small>a few blocks</small></button>
-            <button type="button" data-scope="9" aria-pressed="false"><span>Wide</span><small>neighbourhood</small></button>
-          </div>
-          <label class="sr-only" for="scope-select">Range</label>
-          <select id="scope-select" class="sr-only" tabindex="-1" aria-hidden="true">
-            <option value="9">Wide</option>
-            <option value="10" selected>Nearby</option>
-            <option value="11">Close</option>
-          </select>
-        </section>
-
-        <p id="desktop-view-description" class="frame-note">Open local feed</p>
+        <div class="feed-tabs" role="tablist" aria-label="Feed">
+          <button id="tab-latest" type="button" role="tab" aria-selected="true" aria-controls="feed" data-tab="latest">Latest</button>
+          <button id="tab-trending" type="button" role="tab" aria-selected="false" aria-controls="feed" data-tab="trending">Trending</button>
+        </div>
+        <h2 id="desktop-view-status" class="sr-only">Public · Nearby</h2>
+        <p id="desktop-view-description" class="sr-only">Open local feed</p>
       </header>
 
       <section class="board" aria-label="Feed">
-        <div class="board-head">
-          <h2 id="desktop-view-status" class="board-title">Public · Nearby</h2>
-          <div class="feed-tabs" role="tablist" aria-label="Feed">
-            <button id="tab-latest" type="button" role="tab" aria-selected="true" aria-controls="feed" data-tab="latest">Latest</button>
-            <button id="tab-trending" type="button" role="tab" aria-selected="false" aria-controls="feed" data-tab="trending">Trending</button>
-          </div>
-        </div>
 
         <section id="feed" class="feed" aria-label="Posts nearby">
           <button id="new-posts" class="new-posts" type="button" hidden>New posts</button>
@@ -136,6 +119,28 @@
         </form>
       </section>
     </main>
+
+    <dialog id="range-dialog" class="sheet range-dialog" aria-labelledby="range-heading">
+      <form method="dialog">
+        <header class="dialog-header">
+          <h2 id="range-heading">How far you're listening</h2>
+          <button class="icon-button" value="cancel" aria-label="Close" type="submit">
+            <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8"/></svg>
+          </button>
+        </header>
+        <div class="range-control" role="group" aria-labelledby="range-heading">
+          <button type="submit" value="11" data-scope="11" aria-pressed="false"><span>Close</span><small>About a block</small></button>
+          <button type="submit" value="10" data-scope="10" aria-pressed="true"><span>Nearby</span><small>A few blocks</small></button>
+          <button type="submit" value="9" data-scope="9" aria-pressed="false"><span>Wide</span><small>The neighbourhood</small></button>
+        </div>
+        <label class="sr-only" for="scope-select">Range</label>
+        <select id="scope-select" class="sr-only" tabindex="-1" aria-hidden="true">
+          <option value="9">Wide</option>
+          <option value="10" selected>Nearby</option>
+          <option value="11">Close</option>
+        </select>
+      </form>
+    </dialog>
 
     <dialog id="room-dialog" class="filter-dialog" aria-labelledby="filter-title">
       <form id="room-form" method="dialog">

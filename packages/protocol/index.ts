@@ -56,3 +56,14 @@ export function isClientFrame(value: unknown): value is ClientFrame {
 export function sameRoom(viewer: Pick<ConnectionAttachment, "roomTag">, message: ChatMessage): boolean {
   return viewer.roomTag === message.roomTag;
 }
+
+export interface PostView {
+  id: string;
+  threadId: string;
+  parentId: string | null;
+  author: string;
+  body: string;
+  createdAt: number;
+  deleted: boolean;
+  likeCount: number;
+}

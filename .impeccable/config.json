@@ -38,6 +38,15 @@
         ],
         "createdAt": "2026-10-05T08:32:46.539Z",
         "reason": "user confirmed: picked the 'Quiet board' palette (#e4dfd6 board, #fbfaf7 flyers) from offered options"
+      },
+      {
+        "rule": "nested-cards",
+        "value": "*",
+        "files": [
+          "public/index.html"
+        ],
+        "createdAt": "2026-10-05T09:34:44.617Z",
+        "reason": "model judgement: flagged div is the System/Light/Dark segmented control inside the menu popover, a control rather than a nested card"
       }
     ]
   }

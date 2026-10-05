@@ -16,7 +16,7 @@ function fakeEnv(session: FakeRow | null = null) {
       };
     },
   };
-  return { env: { DB: DB as never, SESSION_KEY: "test-key" }, calls };
+  return { env: { DB: DB as never, SESSION_KEY: "test-key-that-is-at-least-32-chars-long" }, calls };
 }
 
 const valueOf = (setCookie: string) => setCookie.split(";")[0]!.split("=").slice(1).join("=");
@@ -63,5 +63,13 @@ describe("sessions", () => {
     const cookies = await destroySession(request("pc_session=abc"), env);
     expect(cookies.map(nameOf)).toEqual(["pc_session", "pc_access"]);
     expect(cookies.every((cookie) => cookie.includes("Max-Age=0"))).toBe(true);
+  });
+
+  it("refuses to run without a strong SESSION_KEY", async () => {
+    for (const key of ["", "short"]) {
+      const env = { DB: fakeEnv().env.DB, SESSION_KEY: key };
+      await expect(createSession(env, "user-1", "abcd1234", 1)).rejects.toThrow(/SESSION_KEY/u);
+      await expect(authenticate(request("pc_access=anything"), env, 1)).rejects.toThrow(/SESSION_KEY/u);
+    }
   });
 });

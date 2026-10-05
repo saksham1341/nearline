@@ -5,6 +5,7 @@ import type { ApiUser } from "../api/context.ts";
 import type { Env } from "../env.ts";
 import { cookie, parseCookies } from "../http.ts";
 
+const MIN_SESSION_KEY_LENGTH = 32;
 const SESSION_COOKIE = "pc_session";
 const ACCESS_COOKIE = "pc_access";
 
@@ -20,6 +21,7 @@ export async function createSession(
   author: string,
   now = Date.now(),
 ): Promise<string[]> {
+  sessionKey(env);
   const token = randomToken();
   const tokenHash = bytesToHex(await sha256(token));
   await env.DB.prepare(
@@ -41,10 +43,11 @@ export async function authenticate(
   env: Pick<Env, "DB" | "SESSION_KEY">,
   now = Date.now(),
 ): Promise<AuthResult | null> {
+  const key = sessionKey(env);
   const cookies = parseCookies(request);
   const access = cookies.get(ACCESS_COOKIE);
   if (access) {
-    const payload = await verifyAccessToken(access, env.SESSION_KEY, now);
+    const payload = await verifyAccessToken(access, key, now);
     if (payload) return { user: { id: payload.uid, author: payload.author }, setCookies: [] };
   }
   const token = cookies.get(SESSION_COOKIE);
@@ -73,7 +76,16 @@ export async function destroySession(request: Request, env: Pick<Env, "DB">): Pr
 async function accessCookie(env: Pick<Env, "SESSION_KEY">, user: ApiUser, tokenHash: string, now: number): Promise<string> {
   const token = await signAccessToken(
     { uid: user.id, author: user.author, sid: tokenHash.slice(0, 16), exp: now + ACCESS_TOKEN_TTL_MS },
-    env.SESSION_KEY,
+    sessionKey(env),
   );
   return cookie(ACCESS_COOKIE, token, ACCESS_TOKEN_TTL_MS / 1_000);
+}
+
+/** Fails closed: without a strong key, no token is issued or accepted. */
+function sessionKey(env: Pick<Env, "SESSION_KEY">): string {
+  const key = env.SESSION_KEY;
+  if (typeof key !== "string" || key.length < MIN_SESSION_KEY_LENGTH) {
+    throw new Error(`SESSION_KEY is missing or shorter than ${MIN_SESSION_KEY_LENGTH} characters`);
+  }
+  return key;
 }

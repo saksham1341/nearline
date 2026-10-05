@@ -31,13 +31,24 @@ export function sharedCacheControl(seconds: number): string {
   return `public, max-age=0, s-maxage=${seconds}`;
 }
 
-/** Answers 304 when the client already has this version. */
+/**
+ * Answers 304 when the client already has this version. If-None-Match uses weak comparison
+ * (RFC 9110 §13.1.2): Cloudflare marks ETags weak when it compresses, so `W/` must not matter.
+ */
 export function conditional(request: Request, response: Response): Response {
   const etag = response.headers.get("etag");
-  if (etag && request.headers.get("if-none-match") === etag) {
+  const header = request.headers.get("if-none-match");
+  if (etag && header && matchesWeakly(header, etag)) {
     return new Response(null, { status: 304, headers: { etag, "cache-control": response.headers.get("cache-control") ?? "no-store" } });
   }
   return response;
+}
+
+function matchesWeakly(header: string, etag: string): boolean {
+  if (header.trim() === "*") return true;
+  const opaque = (tag: string) => tag.trim().replace(/^W\//u, "");
+  const target = opaque(etag);
+  return header.split(",").some((candidate) => opaque(candidate) === target);
 }
 
 export async function versionHash(parts: readonly (string | number)[]): Promise<string> {

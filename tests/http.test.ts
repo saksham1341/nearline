@@ -29,3 +29,18 @@ describe("responses sent to browsers", () => {
     expect(() => finalizeApiResponse(cached, ["a=b"])).not.toThrow();
   });
 });
+
+describe("conditional requests", () => {
+  it("matches ETags weakly, as If-None-Match requires, including lists and W/ prefixes", async () => {
+    const { conditional } = await import("../workers/edge/api/respond.ts");
+    const fresh = () => new Response("{}", { headers: { etag: "\"abc\"", "cache-control": "public, s-maxage=3" } });
+    const ask = (value: string) => conditional(new Request("https://x/", { headers: { "if-none-match": value } }), fresh()).status;
+    expect(ask("\"abc\"")).toBe(304);
+    expect(ask("W/\"abc\"")).toBe(304);
+    expect(ask("\"zzz\", W/\"abc\"")).toBe(304);
+    expect(ask("*")).toBe(304);
+    expect(ask("\"zzz\"")).toBe(200);
+    const weakStored = new Response("{}", { headers: { etag: "W/\"abc\"" } });
+    expect(conditional(new Request("https://x/", { headers: { "if-none-match": "\"abc\"" } }), weakStored).status).toBe(304);
+  });
+});

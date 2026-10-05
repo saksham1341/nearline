@@ -1,1 +1,2 @@
-/how-it-works  /how-it-works.html  200
+# Clean URL redirects handled by Cloudflare Pages automatically
+# No manual rules needed — /how-it-works → /how-it-works.html is implicit

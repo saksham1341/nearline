@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { signAccessToken } from "../packages/shared/session-token.ts";
 import { uuidv7 } from "../packages/shared/uuid.ts";
+import { forgetCapacity } from "../workers/edge/capacity.ts";
 import worker from "../workers/edge/index.ts";
 import type { FeedEvent } from "../workers/edge/events.ts";
 import { fakeQueue } from "./support/fake-cloudflare.ts";
@@ -8,7 +9,7 @@ import { fakeQueue } from "./support/fake-cloudflare.ts";
 const ORIGIN = "https://nearline.test";
 const SESSION_KEY = "test-key-that-is-at-least-32-chars-long";
 
-function fakeEnv(threadStub: (id: string) => object = () => ({})) {
+function fakeEnv(threadStub: (id: string) => object = () => ({}), capacity: object | null = null) {
   const allow = { limit: async () => ({ success: true }) };
   return {
     ORIGIN,
@@ -28,7 +29,7 @@ function fakeEnv(threadStub: (id: string) => object = () => ({})) {
     CELL_INDEX: { getByName: () => ({}) },
     USER_STATE: { getByName: () => ({}) },
     FEED_EVENTS: fakeQueue(),
-    PARTITION_MAP: { list: async () => ({ keys: [], list_complete: true }) },
+    PARTITION_MAP: { list: async () => ({ keys: [], list_complete: true }), get: async () => capacity },
     MESSAGE_LIMITER: allow,
     LIKE_LIMITER: allow,
     READ_LIMITER: allow,
@@ -79,6 +80,37 @@ describe("Worker routing", () => {
 
   it("serves everything outside /api from static assets", async () => {
     expect(await (await call(new Request(`${ORIGIN}/how-it-works`))).text()).toBe("asset");
+  });
+});
+
+describe("Worker capacity pause", () => {
+  it("reports open status and serves the API while under the daily allowance", async () => {
+    forgetCapacity();
+    const response = await call(new Request(`${ORIGIN}/api/status`));
+    expect(await response.json()).toEqual({ paused: false, reason: null, resumesAt: null });
+    expect((await call(new Request(`${ORIGIN}/api/feed?tab=latest`))).status).toBe(401);
+  });
+
+  it("refuses every API call except status once paused, without checking the session", async () => {
+    forgetCapacity();
+    const resumesAt = Date.now() + 3_600_000;
+    const env = fakeEnv(undefined, { paused: true, reason: "durableObjects", resumesAt, checkedAt: Date.now() });
+    const status = await call(new Request(`${ORIGIN}/api/status`), env);
+    expect(await status.json()).toEqual({ paused: true, reason: "durableObjects", resumesAt });
+    for (const path of ["/api/feed?tab=latest", "/api/auth/session"]) {
+      const response = await call(new Request(`${ORIGIN}${path}`), env);
+      expect(response.status).toBe(503);
+      expect(await response.json()).toEqual({ error: "OVER_CAPACITY", resumesAt });
+    }
+    expect(await (await call(new Request(`${ORIGIN}/`), env)).text()).toBe("asset");
+    forgetCapacity();
+  });
+
+  it("lifts a pause by itself once the allowances reset", async () => {
+    forgetCapacity();
+    const env = fakeEnv(undefined, { paused: true, reason: "workers", resumesAt: Date.now() - 1, checkedAt: 0 });
+    expect(await (await call(new Request(`${ORIGIN}/api/status`), env)).json()).toMatchObject({ paused: false });
+    forgetCapacity();
   });
 });
 

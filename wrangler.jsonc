@@ -46,11 +46,12 @@
     { "name": "LIKE_LIMITER", "namespace_id": "1004", "simple": { "limit": 30, "period": 10 } },
     { "name": "READ_LIMITER", "namespace_id": "1005", "simple": { "limit": 120, "period": 60 } }
   ],
-  "triggers": { "crons": ["17 * * * *"] },
+  "triggers": { "crons": ["17 * * * *", "*/5 * * * *"] },
   "vars": {
     "RP_NAME": "Nearline",
     "RP_ID": "nearline.sxm.li",
-    "ORIGIN": "https://nearline.sxm.li"
+    "ORIGIN": "https://nearline.sxm.li",
+    "CF_ACCOUNT_ID": "109052ce1ca2077aaf54519efdf19b23"
   },
   "observability": { "enabled": true }
 }

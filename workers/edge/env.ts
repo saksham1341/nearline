@@ -16,4 +16,7 @@ export interface Env {
   RP_ID: string;
   ORIGIN: string;
   SESSION_KEY: string;
+  /** Account Analytics: Read token and the account it covers; without them the capacity check is off. */
+  CF_API_TOKEN?: string;
+  CF_ACCOUNT_ID?: string;
 }

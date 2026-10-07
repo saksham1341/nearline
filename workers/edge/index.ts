@@ -5,6 +5,7 @@ import { handleFeed } from "./api/feed.ts";
 import { handleThread } from "./api/threads.ts";
 import { handleAuth } from "./auth/routes.ts";
 import { authenticate } from "./auth/session.ts";
+import { capacityStatus, refreshCapacity } from "./capacity.ts";
 import { CellIndex } from "./durable-objects/cell-index.ts";
 import { ThreadStore } from "./durable-objects/thread-store.ts";
 import { UserState } from "./durable-objects/user-state.ts";
@@ -16,15 +17,25 @@ import { createServices } from "./services-env.ts";
 
 export { CellIndex, ThreadStore, UserState };
 
+/** Must match the capacity cron in wrangler.jsonc; the other cron cleans up expired sessions. */
+const CAPACITY_CRON = "*/5 * * * *";
 const THREAD_PATH = /^\/api\/threads\/([0-9a-f-]{36})$/u;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     try {
       const url = new URL(request.url);
-      if (url.pathname.startsWith("/api/auth/")) return await handleAuth(request, env, url.pathname);
       if (url.pathname === "/api/client-error" && request.method === "POST") return await logClientError(request);
       if (url.pathname === "/api/health") return json({ ok: true });
+      if (url.pathname.startsWith("/api/")) {
+        const capacity = await capacityStatus(env, Date.now());
+        if (url.pathname === "/api/status") {
+          return json({ paused: capacity.paused, reason: capacity.reason ?? null, resumesAt: capacity.resumesAt ?? null });
+        }
+        // Paused: answer before touching sessions, Durable Objects or the queue, which are what is running out.
+        if (capacity.paused) return pausedResponse(capacity.resumesAt ?? null, Date.now());
+      }
+      if (url.pathname.startsWith("/api/auth/")) return await handleAuth(request, env, url.pathname);
       if (url.pathname.startsWith("/api/")) return await handleApi(request, env, url);
       return env.ASSETS.fetch(request);
     } catch (error) {
@@ -48,8 +59,9 @@ export default {
     }
   },
 
-  async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
+  async scheduled(controller: ScheduledController, env: Env): Promise<void> {
     const now = Date.now();
+    if (controller.cron === CAPACITY_CRON) return refreshCapacity(env, now);
     await env.DB.batch([
       env.DB.prepare("DELETE FROM sessions WHERE expires_at <= ?").bind(now),
       env.DB.prepare("DELETE FROM auth_challenges WHERE expires_at <= ?").bind(now),
@@ -75,6 +87,11 @@ async function route(request: Request, url: URL, ctx: ApiContext): Promise<Respo
   const thread = THREAD_PATH.exec(url.pathname);
   if (request.method === "GET" && thread) return handleThread(thread[1]!, url, request, ctx);
   throw new HttpError(404, "NOT_FOUND");
+}
+
+function pausedResponse(resumesAt: number | null, now: number): Response {
+  const retryAfter = resumesAt === null ? 300 : Math.max(60, Math.ceil((resumesAt - now) / 1_000));
+  return json({ error: "OVER_CAPACITY", resumesAt }, { status: 503, headers: { "retry-after": String(retryAfter) } });
 }
 
 async function logClientError(request: Request): Promise<Response> {

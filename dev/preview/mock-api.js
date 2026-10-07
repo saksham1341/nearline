@@ -4,6 +4,7 @@
 // URL hash switches:  #gate   signed out (sign-in screen)
 //                     #empty  signed in, nothing nearby
 //                     #thread open the first thread once the feed loads
+//                     #paused the daily free capacity is spent
 (() => {
   const MIN = 60_000;
   const TTL = 15 * MIN;
@@ -156,11 +157,17 @@
     });
   const later = (value) => new Promise((resolve) => setTimeout(() => resolve(value), 120 + Math.random() * 180));
 
+  const nextMidnight = () => {
+    const now = new Date();
+    return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+  };
   const realFetch = window.fetch.bind(window);
   window.fetch = async (input, init = {}) => {
     const url = new URL(typeof input === "string" ? input : input.url, location.href);
     if (!url.pathname.startsWith("/api/")) return realFetch(input, init);
     const path = url.pathname;
+    const paused = location.hash.includes("paused");
+    if (path === "/api/status") return later(json({ paused, reason: paused ? "workers" : null, resumesAt: paused ? nextMidnight() : null }));
     if (path.startsWith("/api/auth/session")) return later(json(signedIn ? { authenticated: true, author: ME } : { authenticated: false }));
     if (path.startsWith("/api/auth/")) return later(json({ ok: true }));
     if (path === "/api/feed") return later(json(feed(url)));

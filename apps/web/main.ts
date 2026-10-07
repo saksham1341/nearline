@@ -9,7 +9,7 @@ import {
   type ProximityScope,
 } from "../../packages/shared/constants.ts";
 import { bytesToHex, sha256 } from "../../packages/shared/encoding.ts";
-import { fetchEngagement, fetchFeed, fetchThread, sendAction } from "./api.ts";
+import { detectPause, fetchEngagement, fetchFeed, fetchStatus, fetchThread, onPaused, sendAction } from "./api.ts";
 import { FeedState } from "./feed-state.ts";
 import { LatestOnly } from "./latest-only.ts";
 import { Poller } from "./poller.ts";
@@ -21,6 +21,8 @@ const elements = {
   authView: required<HTMLElement>("auth-view"),
   locationView: required<HTMLElement>("location-view"),
   chatView: required<HTMLElement>("chat-view"),
+  pausedView: required<HTMLElement>("paused-view"),
+  pausedCopy: required<HTMLElement>("paused-copy"),
   login: required<HTMLButtonElement>("login-button"),
   register: required<HTMLButtonElement>("register-button"),
   location: required<HTMLButtonElement>("location-button"),
@@ -117,6 +119,12 @@ void initialize();
 async function initialize(): Promise<void> {
   bindEvents();
   syncViewportHeight();
+  onPaused(showPaused);
+  const status = await fetchStatus();
+  if (status?.paused) {
+    showPaused(status.resumesAt);
+    return;
+  }
   try {
     const session = await authApi<{ authenticated: boolean; author?: string }>("/api/auth/session");
     if (session.authenticated) {
@@ -833,7 +841,8 @@ function openRoomDialog(): void {
 
 // ---------- Shell ----------
 
-function showView(view: "auth" | "location" | "chat"): void {
+function showView(view: "auth" | "location" | "chat" | "paused"): void {
+  elements.pausedView.hidden = view !== "paused";
   elements.authView.hidden = view !== "auth";
   elements.locationView.hidden = view !== "location";
   elements.chatView.hidden = view !== "chat";
@@ -842,6 +851,26 @@ function showView(view: "auth" | "location" | "chat"): void {
   }
   syncPolling();
   scheduleRender();
+}
+
+const PAUSED_RECHECK_MS = 60_000;
+let pausedTimer: number | undefined;
+
+/** Today's free capacity is spent: stop polling and wait it out, checking once a minute while visible. */
+function showPaused(resumesAt: number | null): void {
+  const back = resumesAt === null
+    ? "It’ll be back shortly."
+    : `It’ll be back at ${new Date(resumesAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.`;
+  elements.pausedCopy.textContent = `Nearline has used up today’s capacity. ${back}`;
+  if (!elements.pausedView.hidden) return;
+  showView("paused");
+  window.clearInterval(pausedTimer);
+  pausedTimer = window.setInterval(() => {
+    if (document.hidden) return;
+    void fetchStatus().then((status) => {
+      if (status && !status.paused) window.location.reload();
+    });
+  }, PAUSED_RECHECK_MS);
 }
 
 function showToast(message: string): void {
@@ -904,6 +933,7 @@ function syncViewportHeight(): void {
 
 async function authApi<T = unknown>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, init);
+  if (await detectPause(response)) throw new Error("OVER_CAPACITY");
   const data = await response.json() as T & { error?: string };
   if (!response.ok) throw new Error(data.error ?? `Request failed (${response.status})`);
   return data;

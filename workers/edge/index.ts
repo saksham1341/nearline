@@ -17,8 +17,8 @@ import { createServices } from "./services-env.ts";
 
 export { CellIndex, ThreadStore, UserState };
 
-/** Must match the capacity cron in wrangler.jsonc; the other cron cleans up expired sessions. */
-const CAPACITY_CRON = "*/5 * * * *";
+/** The one cron (wrangler.jsonc) fires every 5 minutes; the run at this minute also cleans up auth rows. */
+const CLEANUP_MINUTE = 17;
 const THREAD_PATH = /^\/api\/threads\/([0-9a-f-]{36})$/u;
 
 export default {
@@ -61,11 +61,14 @@ export default {
 
   async scheduled(controller: ScheduledController, env: Env): Promise<void> {
     const now = Date.now();
-    if (controller.cron === CAPACITY_CRON) return refreshCapacity(env, now);
-    await env.DB.batch([
-      env.DB.prepare("DELETE FROM sessions WHERE expires_at <= ?").bind(now),
-      env.DB.prepare("DELETE FROM auth_challenges WHERE expires_at <= ?").bind(now),
-    ]);
+    const jobs = [refreshCapacity(env, now)];
+    if (new Date(controller.scheduledTime).getUTCMinutes() === CLEANUP_MINUTE) {
+      jobs.push(env.DB.batch([
+        env.DB.prepare("DELETE FROM sessions WHERE expires_at <= ?").bind(now),
+        env.DB.prepare("DELETE FROM auth_challenges WHERE expires_at <= ?").bind(now),
+      ]).then(() => undefined));
+    }
+    await Promise.all(jobs);
   },
 } satisfies ExportedHandler<Env, FeedEvent>;
 

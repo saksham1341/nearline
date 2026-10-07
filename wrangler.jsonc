@@ -46,7 +46,9 @@
     { "name": "LIKE_LIMITER", "namespace_id": "1004", "simple": { "limit": 30, "period": 10 } },
     { "name": "READ_LIMITER", "namespace_id": "1005", "simple": { "limit": 120, "period": 60 } }
   ],
-  "triggers": { "crons": ["17 * * * *", "*/5 * * * *"] },
+  // One trigger: a second, "*/5" cron registered but never fired. The capacity check runs every time, and the
+  // :17 run also deletes expired sessions and challenges (workers/edge/index.ts).
+  "triggers": { "crons": ["2,7,12,17,22,27,32,37,42,47,52,57 * * * *"] },
   "vars": {
     "RP_NAME": "Nearline",
     "RP_ID": "nearline.sxm.li",

@@ -13,11 +13,11 @@
     <title>Nearline — what's happening here</title>
 
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="/favicon.ico?v=de74467">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=de74467">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=de74467">
-    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png?v=de74467">
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=de74467">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico?v=hexring1">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=hexring1">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=hexring1">
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png?v=hexring1">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=hexring1">
     <link rel="manifest" href="/manifest.webmanifest">
 
     <!-- Open Graph -->
@@ -28,7 +28,7 @@
     <meta property="og:image" content="https://nearline.sxm.li/og-image.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="Nearline logo — a hexagon on cork">
+    <meta property="og:image:alt" content="Nearline logo — nested hexagon rings">
     <meta property="og:site_name" content="Nearline">
     <meta property="og:locale" content="en_US">
 
@@ -37,7 +37,7 @@
     <meta name="twitter:title" content="Nearline — what's happening here">
     <meta name="twitter:description" content="Posts from the people around you. Each one fades fifteen minutes after it goes quiet.">
     <meta name="twitter:image" content="https://nearline.sxm.li/og-image.png">
-    <meta name="twitter:image:alt" content="Nearline logo — a hexagon on cork">
+    <meta name="twitter:image:alt" content="Nearline logo — nested hexagon rings">
 
     <link rel="preload" href="/fonts/archivo-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin>
     <script>try{var t=localStorage.getItem("nearline-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
@@ -61,7 +61,7 @@
     </script>
     <main id="auth-view" class="gate" hidden>
       <section class="gate-flyer" aria-labelledby="auth-title">
-        <svg class="gate-logo" viewBox="0 0 80 80" width="64" height="64" aria-hidden="true"><polygon points="60.8,28.0 60.8,52.0 40.0,64.0 19.2,52.0 19.2,28.0 40.0,16.0" fill="currentColor"/><polygon points="54.7,31.5 54.7,48.5 40.0,57.0 25.3,48.5 25.3,31.5 40.0,23.0" fill="none" stroke="#c99e6e" stroke-width="3.5" opacity=".7"/><polygon points="49.5,34.5 49.5,45.5 40.0,51.0 30.5,45.5 30.5,34.5 40.0,29.0" fill="none" stroke="#c99e6e" stroke-width="3" opacity=".5"/></svg>
+        <svg class="gate-logo" viewBox="0 0 80 80" width="64" height="64" aria-hidden="true"><polygon class="logo-ring" points="40,5 70.31,22.5 70.31,57.5 40,75 9.69,57.5 9.69,22.5"/><polygon class="logo-ring logo-ring-inner" points="40,17 59.92,28.5 59.92,51.5 40,63 20.08,51.5 20.08,28.5"/><polygon class="logo-core" points="40,29 49.53,34.5 49.53,45.5 40,51 30.47,45.5 30.47,34.5"/></svg>
         <h1 id="auth-title">It's what's happening here.</h1>
         <p class="gate-copy">Posts from the people around you. Each one fades fifteen minutes after it goes quiet.</p>
         <div class="gate-actions">
@@ -74,7 +74,7 @@
 
     <main id="location-view" class="gate" hidden>
       <section class="gate-flyer" aria-labelledby="location-title">
-        <svg class="gate-logo" viewBox="0 0 80 80" width="64" height="64" aria-hidden="true"><polygon points="60.8,28.0 60.8,52.0 40.0,64.0 19.2,52.0 19.2,28.0 40.0,16.0" fill="currentColor"/><polygon points="54.7,31.5 54.7,48.5 40.0,57.0 25.3,48.5 25.3,31.5 40.0,23.0" fill="none" stroke="#c99e6e" stroke-width="3.5" opacity=".7"/><polygon points="49.5,34.5 49.5,45.5 40.0,51.0 30.5,45.5 30.5,34.5 40.0,29.0" fill="none" stroke="#c99e6e" stroke-width="3" opacity=".5"/></svg>
+        <svg class="gate-logo" viewBox="0 0 80 80" width="64" height="64" aria-hidden="true"><polygon class="logo-ring" points="40,5 70.31,22.5 70.31,57.5 40,75 9.69,57.5 9.69,22.5"/><polygon class="logo-ring logo-ring-inner" points="40,17 59.92,28.5 59.92,51.5 40,63 20.08,51.5 20.08,28.5"/><polygon class="logo-core" points="40,29 49.53,34.5 49.53,45.5 40,51 30.47,45.5 30.47,34.5"/></svg>
         <h1 id="location-title">What's happening around you?</h1>
         <p id="location-copy" class="gate-copy">Nearline shows posts from around you. Location is required to continue.</p>
         <button id="location-button" class="button primary" type="button">Use my location</button>
@@ -88,7 +88,7 @@
       <header class="frame" aria-label="Nearline controls">
         <div class="appbar-row">
           <div class="brand">
-            <svg class="logo" viewBox="0 0 80 80" aria-hidden="true"><polygon points="60.8,28.0 60.8,52.0 40.0,64.0 19.2,52.0 19.2,28.0 40.0,16.0" fill="currentColor"/><polygon points="54.7,31.5 54.7,48.5 40.0,57.0 25.3,48.5 25.3,31.5 40.0,23.0" fill="none" stroke="#c99e6e" stroke-width="3.5" opacity=".7"/><polygon points="49.5,34.5 49.5,45.5 40.0,51.0 30.5,45.5 30.5,34.5 40.0,29.0" fill="none" stroke="#c99e6e" stroke-width="3" opacity=".5"/></svg>
+            <svg class="logo" viewBox="0 0 80 80" aria-hidden="true"><polygon class="logo-ring" points="40,5 70.31,22.5 70.31,57.5 40,75 9.69,57.5 9.69,22.5"/><polygon class="logo-ring logo-ring-inner" points="40,17 59.92,28.5 59.92,51.5 40,63 20.08,51.5 20.08,28.5"/><polygon class="logo-core" points="40,29 49.53,34.5 49.53,45.5 40,51 30.47,45.5 30.47,34.5"/></svg>
             <p class="wordmark">Nearline<span class="wordmark-line">what's happening here</span></p>
           </div>
           <div class="appbar-trailing">
@@ -153,7 +153,7 @@
               <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5"/></svg>
             </button>
           </div>
-          <svg class="logo" viewBox="0 0 80 80" aria-hidden="true"><polygon points="60.8,28.0 60.8,52.0 40.0,64.0 19.2,52.0 19.2,28.0 40.0,16.0" fill="currentColor"/><polygon points="54.7,31.5 54.7,48.5 40.0,57.0 25.3,48.5 25.3,31.5 40.0,23.0" fill="none" stroke="#c99e6e" stroke-width="3.5" opacity=".7"/><polygon points="49.5,34.5 49.5,45.5 40.0,51.0 30.5,45.5 30.5,34.5 40.0,29.0" fill="none" stroke="#c99e6e" stroke-width="3" opacity=".5"/></svg>
+          <svg class="logo" viewBox="0 0 80 80" aria-hidden="true"><polygon class="logo-ring" points="40,5 70.31,22.5 70.31,57.5 40,75 9.69,57.5 9.69,22.5"/><polygon class="logo-ring logo-ring-inner" points="40,17 59.92,28.5 59.92,51.5 40,63 20.08,51.5 20.08,28.5"/><polygon class="logo-core" points="40,29 49.53,34.5 49.53,45.5 40,51 30.47,45.5 30.47,34.5"/></svg>
           <div class="thread-header-right">
             <button id="thread-up" class="text-button" type="button" hidden>Up a level</button>
           </div>

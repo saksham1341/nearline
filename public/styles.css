@@ -547,6 +547,24 @@ textarea:focus, textarea:focus-visible { outline: none; box-shadow: none; }
   .audience-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
 }
 
+/* "Made by" pill: bottom right, only where it can't cover anything. On phones the composer owns the bottom of
+   the app and the explainer's text runs edge to edge, so there it shows on the sign-in screens alone. */
+.made-by {
+  position: fixed; z-index: 2; display: none; align-items: center; gap: 6px;
+  right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  min-height: 32px; padding: 0 12px 0 10px; border-radius: var(--pill);
+  background: var(--bg); color: var(--ink-2); box-shadow: 0 0 0 1px var(--island-line), 0 6px 20px -8px rgba(0, 0, 0, 0.3);
+  font-size: var(--t-12); text-decoration: none;
+  transition: color var(--fast) var(--ease-out), transform var(--fast) var(--ease-out);
+}
+.made-by strong { color: var(--ink); font-weight: 700; }
+.made-by-mark { width: 14px; height: 14px; flex: none; fill: currentColor; }
+.made-by:hover { color: var(--ink); }
+.made-by:active { transform: scale(0.97); }
+body:has(> .gate:not([hidden])) .made-by { display: inline-flex; }
+@media (min-width: 940px) { body:has(> .app:not([hidden])) .made-by { display: inline-flex; } }
+@media (min-width: 1140px) { body.doc .made-by { display: inline-flex; } }
+
 /* ---------- Wider screens: the app sits as a column on the canvas ---------- */
 @media (min-width: 720px) {
   body { background: var(--canvas); }

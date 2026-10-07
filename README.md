@@ -2,7 +2,8 @@
 
 A local, X-style feed for the people physically around you: posts, replies, likes and reposts, filtered by where you are. Every thread fades fifteen minutes after its last activity. Built on Cloudflare Workers, Durable Objects, Queues, Workers KV, D1, H3 and passkeys.
 
-- How it works, in plain language: [`public/how-it-works.html`](./public/how-it-works.html) (served at `/how-it-works.html`)
+- Live: [nearline.sxm.li](https://nearline.sxm.li)
+- How it works, in plain language: [nearline.sxm.li/how-it-works](https://nearline.sxm.li/how-it-works) (source: [`public/how-it-works.html`](./public/how-it-works.html))
 - Design: [`docs/superpowers/specs/2026-10-05-local-feed-design.md`](./docs/superpowers/specs/2026-10-05-local-feed-design.md)
 - Original v1 specification: [`SPEC.md`](./SPEC.md)
 
